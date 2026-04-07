@@ -36,10 +36,11 @@ export default function Layout() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">W</span>
-            </div>
-            <span className="font-semibold text-sm">Expense Tracker</span>
+            <img
+              src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/5a122ba74_wdt-logo-v1-logo-full-colour-rgb.jpg"
+              alt="We Define Travel"
+              className="h-8 w-auto object-contain"
+            />
           </div>
         </div>
 

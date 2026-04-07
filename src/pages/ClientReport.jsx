@@ -143,9 +143,12 @@ export default function ClientReport() {
             {/* Header */}
             <div className="flex justify-between items-start mb-6">
               <div>
-                <div className="w-14 h-14 bg-[#C8102E] rounded-xl flex items-center justify-center mb-3">
-                  <span className="text-white font-extrabold text-2xl">W</span>
-                </div>
+                <img
+                  src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/5a122ba74_wdt-logo-v1-logo-full-colour-rgb.jpg"
+                  alt="We Define Travel"
+                  className="h-16 w-auto object-contain mb-3"
+                  crossOrigin="anonymous"
+                />
                 <div className="text-xs text-gray-500 leading-relaxed">
                   {COMPANY_INFO.address}<br />
                   {COMPANY_INFO.email}<br />

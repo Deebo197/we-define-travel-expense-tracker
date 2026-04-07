@@ -38,13 +38,11 @@ export default function Sidebar({ onClose }) {
       {/* Logo */}
       <div className="p-5 flex items-center justify-between">
         <Link to={getHomePath()} className="flex items-center gap-3" onClick={onClose}>
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-sm">
-            <span className="text-primary-foreground font-extrabold text-lg">W</span>
-          </div>
-          <div className="leading-tight">
-            <div className="font-bold text-sm tracking-tight">We Define Travel</div>
-            <div className="text-[11px] text-muted-foreground font-medium">Expense Tracker</div>
-          </div>
+          <img
+            src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/5a122ba74_wdt-logo-v1-logo-full-colour-rgb.jpg"
+            alt="We Define Travel"
+            className="h-10 w-auto object-contain"
+          />
         </Link>
         <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg hover:bg-accent">
           <X className="h-4 w-4" />
