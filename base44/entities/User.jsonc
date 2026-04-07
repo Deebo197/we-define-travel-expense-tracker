@@ -1,0 +1,19 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "title": "Role",
+      "enum": [
+        "admin",
+        "team_member"
+      ],
+      "default": "team_member"
+    },
+    "paid_by_code": {
+      "type": "string",
+      "title": "Paid By Code"
+    }
+  }
+}

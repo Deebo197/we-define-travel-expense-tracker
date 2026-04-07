@@ -1,0 +1,359 @@
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Trash2, Loader2, MapPin, Calculator } from "lucide-react";
+import ClientSplitInput from "../components/ClientSplitInput";
+import ReimbursementBadge from "../components/ReimbursementBadge";
+import { VEHICLE_TYPES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired } from "@/lib/constants";
+import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
+
+export default function MileageLog() {
+  const queryClient = useQueryClient();
+  const { data: user } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: () => base44.auth.me(),
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["allUsers"],
+    queryFn: () => base44.entities.User.list(),
+  });
+
+  const isAdmin = user?.role === "admin";
+
+  const { data: journeys = [], isLoading } = useQuery({
+    queryKey: ["mileageJourneys"],
+    queryFn: () => base44.entities.MileageJourney.list("-date", 500),
+  });
+
+  const myJourneys = isAdmin ? journeys : journeys.filter(j => j.staff_member === user?.email);
+
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(getDefaultForm());
+  const [saving, setSaving] = useState(false);
+  const [calculating, setCalculating] = useState(false);
+
+  function getDefaultForm() {
+    return {
+      date: new Date().toISOString().split("T")[0],
+      vehicle_type: "Car",
+      purpose: "",
+      staff_member: "",
+      staff_member_name: "",
+      stops: [
+        { label: "A", postcode: "" },
+        { label: "B", postcode: "" },
+      ],
+      return_journey: false,
+      total_miles: "",
+      total_cost: "",
+      client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }],
+    };
+  }
+
+  const addStop = () => {
+    const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    setForm(f => ({
+      ...f,
+      stops: [...f.stops, { label: labels[f.stops.length] || `${f.stops.length + 1}`, postcode: "" }],
+    }));
+  };
+
+  const removeStop = (index) => {
+    if (form.stops.length <= 2) return;
+    const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    setForm(f => ({
+      ...f,
+      stops: f.stops.filter((_, i) => i !== index).map((s, i) => ({ ...s, label: labels[i] || `${i + 1}` })),
+    }));
+  };
+
+  const updateStop = (index, postcode) => {
+    setForm(f => ({
+      ...f,
+      stops: f.stops.map((s, i) => i === index ? { ...s, postcode } : s),
+    }));
+  };
+
+  const getRate = () => {
+    const v = VEHICLE_TYPES.find(v => v.type === form.vehicle_type);
+    return v?.rate || 0.45;
+  };
+
+  const calculateDistance = async () => {
+    setCalculating(true);
+    const postcodes = form.stops.map(s => s.postcode).filter(Boolean);
+    if (postcodes.length < 2) {
+      setCalculating(false);
+      return;
+    }
+
+    // Use LLM to estimate distance between postcodes
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Calculate the total driving distance in miles for a journey with these stops in order: ${postcodes.join(" → ")}. These are UK postcodes. Give me the total distance in miles as a number. Be as accurate as possible using your knowledge of UK geography.`,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          total_miles: { type: "number", description: "Total distance in miles" },
+        },
+      },
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+    });
+
+    let miles = result.total_miles || 0;
+    if (form.return_journey) miles *= 2;
+    const rate = getRate();
+    const cost = Math.round(miles * rate * 100) / 100;
+
+    setForm(f => ({
+      ...f,
+      total_miles: miles,
+      total_cost: cost,
+      client_allocations: f.client_allocations.map(a => ({
+        ...a,
+        amount: Math.round((cost * (a.percentage || 0) / 100) * 100) / 100,
+      })),
+    }));
+    setCalculating(false);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const primaryClient = form.client_allocations[0]?.client_code;
+    const receiptCode = await generateReceiptCode(primaryClient, form.date);
+    const month = formatMonth(form.date);
+    const year = new Date(form.date).getFullYear();
+    const rate = getRate();
+
+    const selectedUser = users.find(u => u.email === form.staff_member);
+
+    await base44.entities.MileageJourney.create({
+      date: form.date,
+      vehicle_type: form.vehicle_type,
+      rate_per_mile: rate,
+      purpose: form.purpose,
+      staff_member: form.staff_member,
+      staff_member_name: selectedUser?.full_name || form.staff_member_name,
+      stops: form.stops,
+      return_journey: form.return_journey,
+      total_miles: parseFloat(form.total_miles) || 0,
+      total_cost: parseFloat(form.total_cost) || 0,
+      client_allocations: form.client_allocations,
+      reimbursement_required: true, // mileage always reimbursed
+      reimbursement_paid: false,
+      receipt_code: receiptCode,
+      month,
+      year,
+    });
+
+    queryClient.invalidateQueries({ queryKey: ["mileageJourneys"] });
+    setShowForm(false);
+    setForm(getDefaultForm());
+    setSaving(false);
+  };
+
+  const [filterMonth, setFilterMonth] = useState("all");
+  const [filterStaff, setFilterStaff] = useState("all");
+  const months = [...new Set(myJourneys.map(j => j.month))].filter(Boolean);
+
+  const filtered = myJourneys.filter(j => {
+    if (filterMonth !== "all" && j.month !== filterMonth) return false;
+    if (filterStaff !== "all" && j.staff_member !== filterStaff) return false;
+    return true;
+  });
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Mileage Log</h1>
+        <Button onClick={() => setShowForm(true)} className="gap-1.5">
+          <Plus className="h-4 w-4" /> New Journey
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 mb-5">
+        <Select value={filterMonth} onValueChange={setFilterMonth}>
+          <SelectTrigger className="w-32 h-9 text-xs"><SelectValue placeholder="Month" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All months</SelectItem>
+            {months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {isAdmin && (
+          <Select value={filterStaff} onValueChange={setFilterStaff}>
+            <SelectTrigger className="w-36 h-9 text-xs"><SelectValue placeholder="Staff" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All staff</SelectItem>
+              {users.map(u => <SelectItem key={u.id} value={u.email}>{u.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Journey list */}
+      <div className="bg-card rounded-xl border border-border overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <th className="p-3 text-left">Date</th>
+              {isAdmin && <th className="p-3 text-left">Staff</th>}
+              <th className="p-3 text-left">Route</th>
+              <th className="p-3 text-right">Miles</th>
+              <th className="p-3 text-right">Cost</th>
+              <th className="p-3 text-left">Client(s)</th>
+              <th className="p-3 text-center">Reimb.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(j => (
+              <tr key={j.id} className="border-t border-border hover:bg-muted/20">
+                <td className="p-3 whitespace-nowrap">{formatDateUK(j.date)}</td>
+                {isAdmin && <td className="p-3">{j.staff_member_name || j.staff_member}</td>}
+                <td className="p-3 text-muted-foreground">
+                  {j.stops?.map(s => s.postcode).join(" → ")}{j.return_journey ? " (return)" : ""}
+                </td>
+                <td className="p-3 text-right">{j.total_miles}</td>
+                <td className="p-3 text-right font-semibold">{formatCurrency(j.total_cost)}</td>
+                <td className="p-3">{j.client_allocations?.map(a => a.client_code).join(", ")}</td>
+                <td className="p-3 text-center">
+                  <ReimbursementBadge required={j.reimbursement_required} paid={j.reimbursement_paid} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div className="py-12 text-center text-muted-foreground text-sm">No journeys recorded</div>
+        )}
+      </div>
+
+      {/* New journey dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New Mileage Journey</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm font-medium">Date</Label>
+                <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Vehicle</Label>
+                <Select value={form.vehicle_type} onValueChange={v => setForm(f => ({ ...f, vehicle_type: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {VEHICLE_TYPES.map(v => <SelectItem key={v.type} value={v.type}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">Purpose</Label>
+              <Textarea value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))} placeholder="e.g. Client site visit" className="mt-1" rows={2} />
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">Staff Member</Label>
+              <Select value={form.staff_member} onValueChange={v => {
+                const u = users.find(u => u.email === v);
+                setForm(f => ({ ...f, staff_member: v, staff_member_name: u?.full_name || "" }));
+              }}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
+                <SelectContent>
+                  {users.map(u => <SelectItem key={u.id} value={u.email}>{u.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Stops */}
+            <div>
+              <Label className="text-sm font-semibold">Route — Stops</Label>
+              <div className="space-y-2 mt-2">
+                {form.stops.map((stop, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-primary">{stop.label}</span>
+                    </div>
+                    <Input
+                      value={stop.postcode}
+                      onChange={e => updateStop(i, e.target.value)}
+                      placeholder="Postcode"
+                      className="flex-1"
+                    />
+                    {form.stops.length > 2 && (
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeStop(i)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={addStop}>
+                <Plus className="h-3 w-3 mr-1" /> Add Stop
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Switch checked={form.return_journey} onCheckedChange={v => setForm(f => ({ ...f, return_journey: v }))} />
+              <Label className="text-sm">Return journey (doubles distance)</Label>
+            </div>
+
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={calculateDistance} disabled={calculating}>
+              {calculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+              Calculate Distance & Cost
+            </Button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm font-medium">Total Miles</Label>
+                <Input type="number" value={form.total_miles} onChange={e => {
+                  const miles = parseFloat(e.target.value) || 0;
+                  const cost = Math.round(miles * getRate() * 100) / 100;
+                  setForm(f => ({ ...f, total_miles: e.target.value, total_cost: cost }));
+                }} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Total Cost £</Label>
+                <Input type="number" step="0.01" value={form.total_cost} onChange={e => setForm(f => ({ ...f, total_cost: e.target.value }))} className="mt-1" />
+              </div>
+            </div>
+
+            {/* Client split */}
+            <div className="border-t border-border pt-4">
+              <Label className="text-sm font-semibold mb-3 block">Client Allocation</Label>
+              <ClientSplitInput
+                allocations={form.client_allocations}
+                onChange={a => setForm(f => ({ ...f, client_allocations: a }))}
+                paidAmount={parseFloat(form.total_cost) || 0}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={handleSave} disabled={saving || !form.purpose || !form.staff_member}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <MapPin className="h-4 w-4 mr-1" />}
+                Save Journey
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

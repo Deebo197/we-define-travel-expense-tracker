@@ -1,0 +1,53 @@
+{
+  "name": "BankTransaction",
+  "type": "object",
+  "properties": {
+    "account_source": {
+      "type": "string",
+      "title": "Account Source",
+      "enum": [
+        "Barclays",
+        "Amex"
+      ]
+    },
+    "transaction_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Transaction Date"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "pending",
+        "allocated",
+        "expense_submitted",
+        "ignored"
+      ],
+      "default": "pending"
+    },
+    "auto_processed": {
+      "type": "boolean",
+      "title": "Auto Processed",
+      "default": false
+    },
+    "linked_expense_id": {
+      "type": "string",
+      "title": "Linked Expense ID"
+    }
+  },
+  "required": [
+    "account_source",
+    "transaction_date",
+    "description",
+    "amount"
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "client_allocations": {
+      "type": "array",
+      "title": "Client Allocations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "client_code": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "paid_by": {
+      "type": "string",
+      "title": "Paid By",
+      "enum": [
+        "WCA",
+        "WSA",
+        "WDA",
+        "CB",
+        "ST",
+        "DJ",
+        "WD"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "actual_cost": {
+      "type": "number",
+      "title": "Actual Cost"
+    },
+    "paid_amount": {
+      "type": "number",
+      "title": "Paid Amount"
+    },
+    "vat": {
+      "type": "boolean",
+      "title": "VAT Applicable",
+      "default": false
+    },
+    "receipt_code": {
+      "type": "string",
+      "title": "Receipt Code"
+    },
+    "reimbursement_required": {
+      "type": "boolean",
+      "title": "Reimbursement Required",
+      "default": false
+    },
+    "reimbursement_paid": {
+      "type": "boolean",
+      "title": "Reimbursement Paid",
+      "default": false
+    },
+    "month": {
+      "type": "string",
+      "title": "Month"
+    },
+    "year": {
+      "type": "number",
+      "title": "Year"
+    },
+    "submitted_by": {
+      "type": "string",
+      "title": "Submitted By"
+    },
+    "submitted_by_name": {
+      "type": "string",
+      "title": "Submitted By Name"
+    },
+    "receipt_file": {
+      "type": "string",
+      "title": "Receipt File"
+    },
+    "receipt_url": {
+      "type": "string",
+      "title": "Receipt URL"
+    },
+    "source": {
+      "type": "string",
+      "title": "Source",
+      "enum": [
+        "manual",
+        "csv_import",
+        "mileage"
+      ],
+      "default": "manual"
+    }
+  },
+  "required": [
+    "date",
+    "description",
+    "paid_amount",
+    "paid_by",
+    "client_allocations"
+  ]
+}

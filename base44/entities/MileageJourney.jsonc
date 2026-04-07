@@ -1,0 +1,115 @@
+{
+  "name": "MileageJourney",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "staff_member": {
+      "type": "string",
+      "title": "Staff Member Email"
+    },
+    "staff_member_name": {
+      "type": "string",
+      "title": "Staff Member Name"
+    },
+    "vehicle_type": {
+      "type": "string",
+      "title": "Vehicle Type",
+      "enum": [
+        "Car",
+        "Motorcycle",
+        "Bicycle"
+      ]
+    },
+    "rate_per_mile": {
+      "type": "number",
+      "title": "Rate Per Mile"
+    },
+    "purpose": {
+      "type": "string",
+      "title": "Purpose"
+    },
+    "stops": {
+      "type": "array",
+      "title": "Stops",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "return_journey": {
+      "type": "boolean",
+      "title": "Return Journey",
+      "default": false
+    },
+    "total_miles": {
+      "type": "number",
+      "title": "Total Miles"
+    },
+    "total_cost": {
+      "type": "number",
+      "title": "Total Cost"
+    },
+    "client_allocations": {
+      "type": "array",
+      "title": "Client Allocations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "client_code": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "reimbursement_required": {
+      "type": "boolean",
+      "title": "Reimbursement Required",
+      "default": false
+    },
+    "reimbursement_paid": {
+      "type": "boolean",
+      "title": "Reimbursement Paid",
+      "default": false
+    },
+    "receipt_code": {
+      "type": "string",
+      "title": "Receipt Code"
+    },
+    "month": {
+      "type": "string",
+      "title": "Month"
+    },
+    "year": {
+      "type": "number",
+      "title": "Year"
+    }
+  },
+  "required": [
+    "date",
+    "vehicle_type",
+    "purpose",
+    "stops",
+    "client_allocations",
+    "staff_member"
+  ]
+}

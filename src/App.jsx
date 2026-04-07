@@ -5,7 +5,17 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import SubmitExpense from './pages/SubmitExpense';
+import MyExpenses from './pages/MyExpenses';
+import AllExpenses from './pages/AllExpenses';
+import Reimbursements from './pages/Reimbursements';
+import ClientReport from './pages/ClientReport';
+import MileageLog from './pages/MileageLog';
+import Accounts from './pages/Accounts';
+import AdminRoute from './components/AdminRoute';
+import HomeRedirect from './pages/HomeRedirect';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -33,8 +43,18 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
-      <Route path="*" element={<PageNotFound />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
+        <Route path="/submit-expense" element={<SubmitExpense />} />
+        <Route path="/my-expenses" element={<MyExpenses />} />
+        <Route path="/all-expenses" element={<AdminRoute><AllExpenses /></AdminRoute>} />
+        <Route path="/reimbursements" element={<AdminRoute><Reimbursements /></AdminRoute>} />
+        <Route path="/client-report" element={<AdminRoute><ClientReport /></AdminRoute>} />
+        <Route path="/mileage-log" element={<MileageLog />} />
+        <Route path="/accounts" element={<AdminRoute><Accounts /></AdminRoute>} />
+        <Route path="*" element={<PageNotFound />} />
+      </Route>
     </Routes>
   );
 };
