@@ -5,7 +5,7 @@ export const CLIENT_CODES = [
   { code: "SA", name: "Sands Suites Resort & Spa" },
   { code: "SO", name: "SO/ Maldives" },
   { code: "WD", name: "We Define Travel (Internal)" },
-  { code: "WDP", name: "Profit Code" },
+  { code: "WD1", name: "We Define Travel Margin" },
 ];
 
 export const PAID_BY_CODES = [

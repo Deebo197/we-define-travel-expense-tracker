@@ -54,8 +54,8 @@ export default function Accounts() {
 
       for (const txn of txns) {
         const isWD = /we define|wedefine|wdt/i.test(txn.description);
-        const isWDP = /profit|wdp/i.test(txn.description);
-        const autoProcessed = isWD || isWDP;
+        const isWD1 = /margin|wd1/i.test(txn.description);
+        const autoProcessed = isWD || isWD1;
 
         const record = {
           account_source: accountSource,
@@ -69,7 +69,7 @@ export default function Accounts() {
         const created = await base44.entities.BankTransaction.create(record);
 
         if (autoProcessed) {
-          const clientCode = isWDP ? "WDP" : "WD";
+          const clientCode = isWD1 ? "WD1" : "WD";
           await base44.entities.Expense.create({
             date: txn.date,
             description: txn.description,
