@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { formatCurrency, formatDateUK, PAID_BY_CODES } from "@/lib/constants";
+import { formatCurrency, formatDateUK, PAID_BY_CODES, getPaidByLabel } from "@/lib/constants";
 
 export default function Reimbursements() {
   const queryClient = useQueryClient();
@@ -49,7 +49,7 @@ export default function Reimbursements() {
   const allItems = useMemo(() => {
     const expItems = expenses
       .filter(e => e.reimbursement_required)
-      .map(e => ({ ...e, type: "Expense", person: e.submitted_by_name || e.submitted_by, paidByCode: e.paid_by }));
+      .map(e => ({ ...e, type: "Expense", person: getPaidByLabel(e.paid_by), paidByCode: e.paid_by }));
     const milItems = mileage
       .filter(m => m.reimbursement_required)
       .map(m => ({ ...m, type: "Mileage", person: m.staff_member_name || m.staff_member, paid_amount: m.total_cost, paidByCode: m.staff_member }));
