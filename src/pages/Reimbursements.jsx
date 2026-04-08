@@ -3,12 +3,23 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { formatCurrency, formatDateUK, getClientName } from "@/lib/constants";
+import { formatCurrency, formatDateUK, PAID_BY_CODES } from "@/lib/constants";
 
 export default function Reimbursements() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("pending");
+  const [selectedCodes, setSelectedCodes] = useState([]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const toggleCode = (code) => {
+    setSelectedCodes(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
 
   const { data: expenses = [], isLoading: loadingExp } = useQuery({
     queryKey: ["allExpenses"],
@@ -38,18 +49,23 @@ export default function Reimbursements() {
   const allItems = useMemo(() => {
     const expItems = expenses
       .filter(e => e.reimbursement_required)
-      .map(e => ({ ...e, type: "Expense", person: e.submitted_by_name || e.submitted_by }));
+      .map(e => ({ ...e, type: "Expense", person: e.submitted_by_name || e.submitted_by, paidByCode: e.paid_by }));
     const milItems = mileage
       .filter(m => m.reimbursement_required)
-      .map(m => ({ ...m, type: "Mileage", person: m.staff_member_name || m.staff_member, paid_amount: m.total_cost }));
+      .map(m => ({ ...m, type: "Mileage", person: m.staff_member_name || m.staff_member, paid_amount: m.total_cost, paidByCode: m.staff_member }));
     return [...expItems, ...milItems].sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [expenses, mileage]);
 
-  const filtered = allItems.filter(item => {
-    if (filter === "pending") return !item.reimbursement_paid;
-    if (filter === "paid") return item.reimbursement_paid;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return allItems.filter(item => {
+      if (filter === "pending" && item.reimbursement_paid) return false;
+      if (filter === "paid" && !item.reimbursement_paid) return false;
+      if (selectedCodes.length > 0 && !selectedCodes.includes(item.paidByCode)) return false;
+      if (dateFrom && item.date < dateFrom) return false;
+      if (dateTo && item.date > dateTo) return false;
+      return true;
+    });
+  }, [allItems, filter, selectedCodes, dateFrom, dateTo]);
 
   // Group by person
   const grouped = useMemo(() => {
@@ -70,7 +86,7 @@ export default function Reimbursements() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Reimbursements</h1>
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-32 h-9">
@@ -82,6 +98,56 @@ export default function Reimbursements() {
             <SelectItem value="all">All</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Search / filter section */}
+      <div className="bg-card rounded-xl border border-border p-4 mb-6 space-y-4">
+        <div>
+          <Label className="text-sm font-medium mb-2 block">Filter by Paid By</Label>
+          <div className="flex flex-wrap gap-2">
+            {PAID_BY_CODES.map(p => (
+              <button
+                key={p.code}
+                onClick={() => toggleCode(p.code)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  selectedCodes.includes(p.code)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                {p.code} — {p.label}
+              </button>
+            ))}
+            {selectedCodes.length > 0 && (
+              <button
+                onClick={() => setSelectedCodes([])}
+                className="px-3 py-1.5 rounded-lg text-sm border border-dashed border-border text-muted-foreground hover:bg-accent"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <div>
+            <Label className="text-sm font-medium">From</Label>
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="mt-1 w-40" />
+          </div>
+          <div>
+            <Label className="text-sm font-medium">To</Label>
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="mt-1 w-40" />
+          </div>
+          {(dateFrom || dateTo) && (
+            <div className="flex items-end">
+              <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="mb-0.5 text-sm text-muted-foreground hover:text-foreground underline">Clear dates</button>
+            </div>
+          )}
+        </div>
+        {(selectedCodes.length > 0 || dateFrom || dateTo) && (
+          <div className="pt-1 border-t border-border text-sm font-medium">
+            Showing {filtered.length} items — Total: <span className="text-primary font-bold">{formatCurrency(filtered.reduce((s, i) => s + (i.paid_amount || 0), 0))}</span>
+          </div>
+        )}
       </div>
 
       {Object.keys(grouped).length === 0 ? (
