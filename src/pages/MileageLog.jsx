@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, Loader2, MapPin, Calculator } from "lucide-react";
 import ClientSplitInput from "../components/ClientSplitInput";
+import ReimbursementBadge from "../components/ReimbursementBadge";
 import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
