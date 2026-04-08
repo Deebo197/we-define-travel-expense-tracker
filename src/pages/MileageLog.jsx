@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, Loader2, MapPin, Calculator } from "lucide-react";
 import ClientSplitInput from "../components/ClientSplitInput";
-import ReimbursementBadge from "../components/ReimbursementBadge";
-import { VEHICLE_TYPES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired } from "@/lib/constants";
+import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
 export default function MileageLog() {
@@ -19,11 +18,6 @@ export default function MileageLog() {
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
     queryFn: () => base44.auth.me(),
-  });
-
-  const { data: users = [] } = useQuery({
-    queryKey: ["allUsers"],
-    queryFn: () => base44.entities.User.list(),
   });
 
   const isAdmin = user?.role === "admin";
@@ -45,8 +39,7 @@ export default function MileageLog() {
       date: new Date().toISOString().split("T")[0],
       vehicle_type: "Car",
       purpose: "",
-      staff_member: "",
-      staff_member_name: "",
+      paid_by: "",
       stops: [
         { label: "A", postcode: "" },
         { label: "B", postcode: "" },
@@ -132,22 +125,21 @@ export default function MileageLog() {
     const month = formatMonth(form.date);
     const year = new Date(form.date).getFullYear();
     const rate = getRate();
-
-    const selectedUser = users.find(u => u.email === form.staff_member);
+    const paidByEntry = PAID_BY_CODES.find(p => p.code === form.paid_by);
 
     await base44.entities.MileageJourney.create({
       date: form.date,
       vehicle_type: form.vehicle_type,
       rate_per_mile: rate,
       purpose: form.purpose,
-      staff_member: form.staff_member,
-      staff_member_name: selectedUser?.full_name || form.staff_member_name,
+      staff_member: form.paid_by,
+      staff_member_name: paidByEntry?.label || form.paid_by,
       stops: form.stops,
       return_journey: form.return_journey,
       total_miles: parseFloat(form.total_miles) || 0,
       total_cost: parseFloat(form.total_cost) || 0,
       client_allocations: form.client_allocations,
-      reimbursement_required: true, // mileage always reimbursed
+      reimbursement_required: isReimbursementRequired(form.paid_by),
       reimbursement_paid: false,
       receipt_code: receiptCode,
       month,
@@ -197,7 +189,7 @@ export default function MileageLog() {
             <SelectTrigger className="w-36 h-9 text-xs"><SelectValue placeholder="Staff" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All staff</SelectItem>
-              {users.map(u => <SelectItem key={u.id} value={u.email}>{u.full_name}</SelectItem>)}
+              {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.label}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
@@ -269,16 +261,18 @@ export default function MileageLog() {
             </div>
 
             <div>
-              <Label className="text-sm font-medium">Staff Member</Label>
-              <Select value={form.staff_member} onValueChange={v => {
-                const u = users.find(u => u.email === v);
-                setForm(f => ({ ...f, staff_member: v, staff_member_name: u?.full_name || "" }));
-              }}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select staff" /></SelectTrigger>
+              <Label className="text-sm font-medium">Paid By *</Label>
+              <Select value={form.paid_by} onValueChange={v => setForm(f => ({ ...f, paid_by: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select who paid" /></SelectTrigger>
                 <SelectContent>
-                  {users.map(u => <SelectItem key={u.id} value={u.email}>{u.full_name}</SelectItem>)}
+                  {PAID_BY_CODES.map(p => (
+                    <SelectItem key={p.code} value={p.code}>{p.code} — {p.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {isReimbursementRequired(form.paid_by) && (
+                <p className="text-xs text-primary font-medium mt-1">⚠ Reimbursement will be required</p>
+              )}
             </div>
 
             {/* Stops */}
@@ -346,7 +340,7 @@ export default function MileageLog() {
 
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button className="flex-1" onClick={handleSave} disabled={saving || !form.purpose || !form.staff_member}>
+              <Button className="flex-1" onClick={handleSave} disabled={saving || !form.purpose || !form.paid_by}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <MapPin className="h-4 w-4 mr-1" />}
                 Save Journey
               </Button>

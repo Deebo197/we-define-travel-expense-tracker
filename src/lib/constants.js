@@ -16,6 +16,7 @@ export const PAID_BY_CODES = [
   { code: "ST", label: "Sophie (Personal)", reimbursement: true },
   { code: "DJ", label: "Dee (Personal)", reimbursement: true },
   { code: "WD", label: "We Define Travel Direct", reimbursement: false },
+  { code: "WD1", label: "WeDefine Travel Margin", reimbursement: false },
 ];
 
 export const VEHICLE_TYPES = [
