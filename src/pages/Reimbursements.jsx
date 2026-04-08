@@ -10,7 +10,7 @@ import { formatCurrency, formatDateUK, PAID_BY_CODES, getPaidByLabel } from "@/l
 
 export default function Reimbursements() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState("pending");
+  const [filter, setFilter] = useState("all");
   const [selectedCodes, setSelectedCodes] = useState([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -45,22 +45,22 @@ export default function Reimbursements() {
     },
   });
 
-  // Combine expenses and mileage that need reimbursement
+  // Combine all expenses and mileage
   const allItems = useMemo(() => {
     const expItems = expenses
-      .filter(e => e.reimbursement_required)
       .map(e => ({ ...e, type: "Expense", person: getPaidByLabel(e.paid_by), paidByCode: e.paid_by }));
     const milItems = mileage
-      .filter(m => m.reimbursement_required)
-      .map(m => ({ ...m, type: "Mileage", person: m.staff_member_name || m.staff_member, paid_amount: m.total_cost, paidByCode: m.staff_member }));
+      .map(m => ({ ...m, type: "Mileage", person: getPaidByLabel(m.staff_member) || m.staff_member_name || m.staff_member, paid_amount: m.total_cost, paidByCode: m.staff_member }));
     return [...expItems, ...milItems].sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [expenses, mileage]);
 
   const filtered = useMemo(() => {
     return allItems.filter(item => {
+      // If no codes selected, show nothing (force user to pick a person)
+      if (selectedCodes.length === 0) return false;
+      if (!selectedCodes.includes(item.paidByCode)) return false;
       if (filter === "pending" && item.reimbursement_paid) return false;
       if (filter === "paid" && !item.reimbursement_paid) return false;
-      if (selectedCodes.length > 0 && !selectedCodes.includes(item.paidByCode)) return false;
       if (dateFrom && item.date < dateFrom) return false;
       if (dateTo && item.date > dateTo) return false;
       return true;
@@ -143,7 +143,7 @@ export default function Reimbursements() {
             </div>
           )}
         </div>
-        {(selectedCodes.length > 0 || dateFrom || dateTo) && (
+        {selectedCodes.length > 0 && (
           <div className="pt-1 border-t border-border text-sm font-medium">
             Showing {filtered.length} items — Total: <span className="text-primary font-bold">{formatCurrency(filtered.reduce((s, i) => s + (i.paid_amount || 0), 0))}</span>
           </div>
@@ -152,8 +152,9 @@ export default function Reimbursements() {
 
       {Object.keys(grouped).length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
-          <p className="text-lg font-medium">No reimbursements found</p>
-          <p className="text-sm mt-1">All clear!</p>
+          {selectedCodes.length === 0
+            ? <><p className="text-lg font-medium">Select a person above</p><p className="text-sm mt-1">Choose one or more Paid By codes to view their expenses</p></>
+            : <><p className="text-lg font-medium">No expenses found</p><p className="text-sm mt-1">No records match the selected filters</p></>}
         </div>
       ) : (
         <div className="space-y-6">
