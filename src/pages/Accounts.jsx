@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Paperclip } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ export default function Accounts() {
   const [importMessage, setImportMessage] = useState(null);
   const [tab, setTab] = useState("pending");
   const [rowState, setRowState] = useState({});
+  const [rowReceipts, setRowReceipts] = useState({}); // { [txnId]: { url, name } }
+  const receiptInputRefs = useRef({});
 
   // Description aliases: original -> custom, persisted in localStorage
   const [descAliases, setDescAliases] = useState(() => {
@@ -58,6 +61,12 @@ export default function Accounts() {
 
   const updateRowState = (id, field, value) => {
     setRowState(prev => ({ ...prev, [id]: { ...getRowState({ id }), [field]: value } }));
+  };
+
+  const handleReceiptUpload = async (txnId, file) => {
+    if (!file) return;
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setRowReceipts(prev => ({ ...prev, [txnId]: { url: file_url, name: file.name } }));
   };
 
   const { data: transactions = [], isLoading } = useQuery({
@@ -165,12 +174,15 @@ ${csvText}`,
     mutationFn: async (txn) => {
       const { client_code, paid_by, category } = getRowState(txn);
       const clientName = getClientName(client_code);
+      const receipt = rowReceipts[txn.id];
       await base44.entities.Expense.create({
         date: txn.transaction_date,
         description: txn.description,
         paid_amount: txn.amount,
         actual_cost: txn.amount,
         vat: getRowState(txn).vat || false,
+        receipt_file: receipt?.url || "",
+        receipt_url: receipt?.url || "",
         paid_by,
         category: category || "",
         client_allocations: [{ client_code, client_name: clientName, percentage: 100, amount: txn.amount }],
@@ -388,13 +400,32 @@ ${csvText}`,
                     <td className="p-3 text-right">
                        {txn.status === "pending" && (
                          <div className="flex gap-2 justify-end items-center flex-wrap">
-                          <Button size="sm" className="text-xs h-7" onClick={() => submitAsExpense.mutate(txn)} disabled={submitAsExpense.isPending}>
-                            Submit
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => updateStatus.mutate({ id: txn.id, status: "ignored" })}>
-                            Ignore
-                          </Button>
-                        </div>
+                           <div className="flex items-center gap-1">
+                             <input
+                               type="file"
+                               accept="image/*,.pdf"
+                               className="hidden"
+                               ref={el => receiptInputRefs.current[txn.id] = el}
+                               onChange={e => handleReceiptUpload(txn.id, e.target.files?.[0])}
+                             />
+                             <Button
+                               size="sm"
+                               variant="outline"
+                               className={`text-xs h-7 gap-1 ${rowReceipts[txn.id] ? "text-green-600 border-green-400" : ""}`}
+                               onClick={() => receiptInputRefs.current[txn.id]?.click()}
+                               title={rowReceipts[txn.id]?.name || "Attach receipt"}
+                             >
+                               <Paperclip className="h-3 w-3" />
+                               {rowReceipts[txn.id] ? "✓" : "Receipt"}
+                             </Button>
+                           </div>
+                           <Button size="sm" className="text-xs h-7" onClick={() => submitAsExpense.mutate(txn)} disabled={submitAsExpense.isPending}>
+                             Submit
+                           </Button>
+                           <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => updateStatus.mutate({ id: txn.id, status: "ignored" })}>
+                             Ignore
+                           </Button>
+                         </div>
                       )}
                     </td>
                   </tr>
