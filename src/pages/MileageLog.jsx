@@ -93,21 +93,32 @@ export default function MileageLog() {
       return;
     }
 
-    // Use LLM to estimate distance between postcodes
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Calculate the total driving distance in miles for a journey with these stops in order: ${postcodes.join(" → ")}. These are UK postcodes. Give me the total distance in miles as a number. Be as accurate as possible using your knowledge of UK geography.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          total_miles: { type: "number", description: "Total distance in miles" },
-        },
-      },
-      add_context_from_internet: true,
-      model: "gemini_3_flash",
-    });
+    // Geocode each postcode via Nominatim
+    const coords = [];
+    for (const pc of postcodes) {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pc + ', UK')}&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      const data = await res.json();
+      if (data[0]) coords.push({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+    }
 
-    let miles = result.total_miles || 0;
-    if (form.return_journey) miles *= 2;
+    if (coords.length < 2) {
+      setCalculating(false);
+      return;
+    }
+
+    // Use OSRM (free routing API) to get actual driving distance
+    const coordStr = coords.map(c => `${c.lon},${c.lat}`).join(';');
+    const osrmRes = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=false`
+    );
+    const osrmData = await osrmRes.json();
+    const distanceMetres = osrmData?.routes?.[0]?.distance || 0;
+    let miles = Math.round((distanceMetres / 1609.34) * 10) / 10;
+
+    if (form.return_journey) miles = Math.round(miles * 2 * 10) / 10;
     const rate = getRate();
     const cost = Math.round(miles * rate * 100) / 100;
 
