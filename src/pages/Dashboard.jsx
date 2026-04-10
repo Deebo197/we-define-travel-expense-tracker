@@ -6,6 +6,7 @@ import { Loader2, TrendingUp, CreditCard, Receipt } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { formatCurrency, formatDateUK, getClientName, getPaidByLabel, CLIENT_CODES } from "@/lib/constants";
 import ReimbursementBadge from "../components/ReimbursementBadge";
+import PersonAvatar from "../components/PersonAvatar";
 
 function getMonthRange(filter) {
   const now = new Date();
@@ -55,14 +56,14 @@ export default function Dashboard() {
     pendingReimb.forEach(e => {
       const key = e.paid_by || 'Unknown';
       const name = getPaidByLabel(e.paid_by) || key;
-      if (!map[key]) map[key] = { name, count: 0, total: 0 };
+      if (!map[key]) map[key] = { code: key, name, count: 0, total: 0 };
       map[key].count++;
       map[key].total += e.paid_amount || 0;
     });
     return Object.values(map);
   }, [pendingReimb]);
 
-  const recentExpenses = expenses.slice(0, 10);
+  const recentExpenses = useMemo(() => expenses.slice(0, 10), [expenses]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
@@ -149,9 +150,12 @@ export default function Dashboard() {
             <div className="space-y-3">
               {reimbByPerson.map(p => (
                 <div key={p.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div>
-                    <div className="font-medium text-sm">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">{p.count} items pending</div>
+                  <div className="flex items-center gap-3">
+                    <PersonAvatar code={p.code} size="sm" />
+                    <div>
+                      <div className="font-medium text-sm">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">{p.count} items pending</div>
+                    </div>
                   </div>
                   <span className="text-lg font-bold text-primary">{formatCurrency(p.total)}</span>
                 </div>
@@ -171,11 +175,12 @@ export default function Dashboard() {
         <div className="divide-y divide-border">
           {recentExpenses.map(exp => (
             <div key={exp.id} className="flex items-center justify-between px-5 py-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{formatDateUK(exp.date)}</span>
-                  <span className="text-xs text-muted-foreground">by {exp.submitted_by_name}</span>
-                </div>
+            <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{formatDateUK(exp.date)}</span>
+              <span className="text-xs text-muted-foreground">by</span>
+              <PersonAvatar code={exp.paid_by} size="xs" showName={true} />
+            </div>
                 <p className="text-sm text-muted-foreground truncate">{exp.description}</p>
               </div>
               <div className="text-right ml-4">
