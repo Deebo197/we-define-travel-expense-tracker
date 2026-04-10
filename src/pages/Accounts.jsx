@@ -300,27 +300,27 @@ ${csvText}`,
 
         <TabsContent value={tab} className="mt-4">
           <div className="bg-card rounded-xl border border-border overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <th className="p-3 text-left">Date</th>
-                  <th className="p-3 text-left">Source</th>
-                  <th className="p-3 text-left">Description</th>
-                  <th className="p-3 text-right">Amount</th>
-                  <th className="p-3 text-center">Status</th>
-                  <th className="p-3 text-center">Client</th>
-                  <th className="p-3 text-center">Paid By</th>
-                  <th className="p-3 text-center">Category</th>
-                  <th className="p-3 text-center">VAT</th>
-                  <th className="p-3 text-right">Actions</th>
+                   <th className="px-2 py-2 text-left whitespace-nowrap">Date</th>
+                   <th className="px-2 py-2 text-left">Src</th>
+                   <th className="px-2 py-2 text-left">Description</th>
+                   <th className="px-2 py-2 text-right">Amount</th>
+                   <th className="px-2 py-2 text-center">Status</th>
+                   <th className="px-2 py-2 text-center">Client</th>
+                   <th className="px-2 py-2 text-center">Paid By</th>
+                   <th className="px-2 py-2 text-center">Category</th>
+                   <th className="px-2 py-2 text-center">VAT</th>
+                   <th className="px-2 py-2 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTxns.map(txn => (
                   <tr key={txn.id} className="border-t border-border hover:bg-muted/20">
-                    <td className="p-3 whitespace-nowrap">{formatDateUK(txn.transaction_date)}</td>
-                    <td className="p-3">{txn.account_source}</td>
-                    <td className="p-3 max-w-xs">
+                    <td className="px-2 py-1.5 whitespace-nowrap">{formatDateUK(txn.transaction_date)}</td>
+                    <td className="px-2 py-1.5">{txn.account_source}</td>
+                    <td className="px-2 py-1.5 max-w-[160px]">
                       {editingDesc[txn.id] !== undefined ? (
                         <input
                           autoFocus
@@ -345,8 +345,8 @@ ${csvText}`,
                         </>
                         )}
                     </td>
-                    <td className="p-3 text-right font-semibold">{formatCurrency(txn.amount)}</td>
-                    <td className="p-3 text-center">
+                    <td className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">{formatCurrency(txn.amount)}</td>
+                    <td className="px-2 py-1.5 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         txn.status === "pending" ? "bg-yellow-100 text-yellow-700" :
                         txn.status === "allocated" ? "bg-blue-100 text-blue-700" :
@@ -356,32 +356,32 @@ ${csvText}`,
                         {txn.status}
                       </span>
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (
                         <Select value={getRowState(txn).client_code} onValueChange={v => updateRowState(txn.id, "client_code", v)}>
-                          <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="w-20 h-6 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       )}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (
                         <Select value={getRowState(txn).paid_by} onValueChange={v => updateRowState(txn.id, "paid_by", v)}>
-                          <SelectTrigger className="w-20 h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="w-16 h-6 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       )}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (() => {
                         const cats = getCategoriesForClient(getRowState(txn).client_code);
                         return (
                           <Select value={getRowState(txn).category} onValueChange={v => updateRowState(txn.id, "category", v)}>
-                            <SelectTrigger className="w-36 h-7 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-6 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
                             <SelectContent>
                               {cats.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                             </SelectContent>
@@ -389,7 +389,7 @@ ${csvText}`,
                         );
                       })()}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="px-2 py-1.5 text-center">
                        {txn.status === "pending" && (
                          <Checkbox
                            checked={getRowState(txn).vat || false}
@@ -397,9 +397,9 @@ ${csvText}`,
                          />
                        )}
                      </td>
-                    <td className="p-3 text-right">
+                    <td className="px-2 py-1.5 text-right">
                        {txn.status === "pending" && (
-                         <div className="flex gap-2 justify-end items-center flex-wrap">
+                         <div className="flex gap-1 justify-end items-center">
                            <div className="flex items-center gap-1">
                              <input
                                type="file"
@@ -411,18 +411,18 @@ ${csvText}`,
                              <Button
                                size="sm"
                                variant="outline"
-                               className={`text-xs h-7 gap-1 ${rowReceipts[txn.id] ? "text-green-600 border-green-400" : ""}`}
+                               className={`text-xs h-6 px-1.5 gap-0.5 ${rowReceipts[txn.id] ? "text-green-600 border-green-400" : ""}`}
                                onClick={() => receiptInputRefs.current[txn.id]?.click()}
                                title={rowReceipts[txn.id]?.name || "Attach receipt"}
                              >
                                <Paperclip className="h-3 w-3" />
-                               {rowReceipts[txn.id] ? "✓" : "Receipt"}
+                               {rowReceipts[txn.id] ? "✓" : ""}
                              </Button>
                            </div>
-                           <Button size="sm" className="text-xs h-7" onClick={() => submitAsExpense.mutate(txn)} disabled={submitAsExpense.isPending}>
+                           <Button size="sm" className="text-xs h-6 px-2" onClick={() => submitAsExpense.mutate(txn)} disabled={submitAsExpense.isPending}>
                              Submit
                            </Button>
-                           <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => updateStatus.mutate({ id: txn.id, status: "ignored" })}>
+                           <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => updateStatus.mutate({ id: txn.id, status: "ignored" })}>
                              Ignore
                            </Button>
                          </div>
