@@ -194,7 +194,7 @@ export default function AccountantExport() {
                         <div key={item.id + "-" + i} className={`grid grid-cols-[80px_1fr_90px_70px] px-3 py-1.5 text-xs border-b border-gray-100 ${i % 2 === 1 ? "bg-[#F5F5F5]" : ""}`}>
                           <span>{formatDateUK(item.date)}</span>
                           <span>{item.description}</span>
-                          <span>{item.receipt_file ? <a href={item.receipt_file} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] underline cursor-pointer">{item.receipt_code}</a> : <span className="text-gray-400">{item.receipt_code}</span>}</span>
+                          <span className={item.receipt_file ? "text-[#C8102E]" : "text-gray-400"}>{item.receipt_code}</span>
                           <span className="text-right">{formatCurrency(item.clientAmount)}</span>
                         </div>
                       ))}
