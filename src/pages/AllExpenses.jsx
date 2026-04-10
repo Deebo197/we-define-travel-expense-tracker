@@ -11,6 +11,7 @@ import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil } from "lucide-reac
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
 import CategorySelectItem from "../components/CategorySelectItem";
+import PersonAvatar from "../components/PersonAvatar";
 import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
 
 export default function AllExpenses() {
@@ -207,7 +208,9 @@ export default function AllExpenses() {
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.client_allocations?.map(a => a.client_code).join(", ")}</td>
                 <td className="p-3 max-w-xs truncate cursor-pointer" onClick={() => setSelected(exp)}>{getDisplayDescription(exp.description)}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.category && <CategoryBadge category={exp.category} showLabel={false} />}</td>
-                <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.paid_by}</td>
+                <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>
+                  <PersonAvatar code={exp.paid_by} size="sm" showName={true} />
+                </td>
                 <td className="p-3 text-right font-semibold whitespace-nowrap">{formatCurrency(exp.paid_amount)}</td>
                 <td className="p-3 text-center">{exp.vat ? "Y" : "N"}</td>
                 <td className="p-3 text-center">
@@ -244,7 +247,7 @@ export default function AllExpenses() {
            <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary">{selected.receipt_code}</span></div>
            <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
            <div><span className="text-muted-foreground">Actual Cost:</span><br />{formatCurrency(selected.actual_cost)}</div>
-           <div><span className="text-muted-foreground">Paid By:</span><br />{getPaidByLabel(selected.paid_by)}</div>
+           <div><span className="text-muted-foreground">Paid By:</span><br /><PersonAvatar code={selected.paid_by} size="sm" showName={true} /></div>
            <div><span className="text-muted-foreground">Submitted By:</span><br />{selected.submitted_by_name}</div>
           </div>
           <div><span className="text-muted-foreground">Description:</span><p className="mt-1">{selected.description}</p></div>

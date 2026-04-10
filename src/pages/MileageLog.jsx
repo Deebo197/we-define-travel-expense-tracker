@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2, Loader2, MapPin, Calculator } from "lucide-react";
 import ClientSplitInput from "../components/ClientSplitInput";
 import ReimbursementBadge from "../components/ReimbursementBadge";
+import PersonAvatar from "../components/PersonAvatar";
 import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
@@ -241,7 +242,14 @@ export default function MileageLog() {
             {filtered.map(j => (
               <tr key={j.id} className="border-t border-border hover:bg-muted/20">
                 <td className="p-3 whitespace-nowrap">{formatDateUK(j.date)}</td>
-                {isAdmin && <td className="p-3">{j.staff_member_name || j.staff_member}</td>}
+                {isAdmin && (
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <PersonAvatar code={j.staff_member} size="sm" />
+                      <span>{j.staff_member_name || j.staff_member}</span>
+                    </div>
+                  </td>
+                )}
                 <td className="p-3 text-muted-foreground">
                   {j.stops?.map(s => s.postcode).join(" → ")}{j.return_journey ? " (return)" : ""}
                 </td>

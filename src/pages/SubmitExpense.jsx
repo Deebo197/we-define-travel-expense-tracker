@@ -11,6 +11,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import ReceiptCapture from "../components/ReceiptCapture";
 import ClientSplitInput from "../components/ClientSplitInput";
 import CategorySelectItem from "../components/CategorySelectItem";
+import PersonAvatar from "../components/PersonAvatar";
 import { PAID_BY_CODES, formatMonth, isReimbursementRequired, formatCurrency, getCategoriesForClient } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
@@ -220,7 +221,14 @@ export default function SubmitExpense() {
           <Label className="text-sm font-medium">Paid By *</Label>
           <Select value={form.paid_by} onValueChange={(v) => updateField("paid_by", v)}>
             <SelectTrigger className="mt-1.5">
-              <SelectValue placeholder="Select who paid" />
+              {form.paid_by ? (
+                <div className="flex items-center gap-2">
+                  <PersonAvatar code={form.paid_by} size="xs" />
+                  <span>{PAID_BY_CODES.find(p => p.code === form.paid_by)?.label}</span>
+                </div>
+              ) : (
+                <SelectValue placeholder="Select who paid" />
+              )}
             </SelectTrigger>
             <SelectContent>
               {PAID_BY_CODES.map(p => (
