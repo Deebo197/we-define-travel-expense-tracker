@@ -18,6 +18,12 @@ export default function AllExpenses() {
     queryFn: () => base44.entities.Expense.list("-date", 500),
   });
 
+  const [descAliases] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("wdt_desc_aliases") || "{}"); } catch { return {}; }
+  });
+
+  const getDisplayDescription = (desc) => descAliases[desc] || desc;
+
   const [filters, setFilters] = useState({ client: "all", month: "all", paidBy: "all", reimbReq: "all", reimbPaid: "all" });
   const [selected, setSelected] = useState(null);
   const [checked, setChecked] = useState([]);
@@ -197,7 +203,7 @@ export default function AllExpenses() {
                 <td className="p-3 whitespace-nowrap cursor-pointer" onClick={() => setSelected(exp)}>{formatDateUK(exp.date)}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.submitted_by_name || exp.submitted_by}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.client_allocations?.map(a => a.client_code).join(", ")}</td>
-                <td className="p-3 max-w-xs truncate cursor-pointer" onClick={() => setSelected(exp)}>{exp.description}</td>
+                <td className="p-3 max-w-xs truncate cursor-pointer" onClick={() => setSelected(exp)}>{getDisplayDescription(exp.description)}</td>
                 <td className="p-3 text-xs text-muted-foreground cursor-pointer max-w-[140px] truncate" onClick={() => setSelected(exp)}>{exp.category}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.paid_by}</td>
                 <td className="p-3 text-right font-semibold whitespace-nowrap">{formatCurrency(exp.paid_amount)}</td>
