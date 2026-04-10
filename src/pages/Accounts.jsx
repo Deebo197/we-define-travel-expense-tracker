@@ -19,9 +19,24 @@ export default function Accounts() {
   const [tab, setTab] = useState("pending");
   const [rowState, setRowState] = useState({});
 
+  // Description aliases: original -> custom, persisted in localStorage
+  const [descAliases, setDescAliases] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("wdt_desc_aliases") || "{}"); } catch { return {}; }
+  });
+  const [editingDesc, setEditingDesc] = useState({}); // { [txnId]: currentEditValue }
+
+  const saveDescAlias = async (txn, newDesc) => {
+    const updated = { ...descAliases, [txn.description]: newDesc };
+    setDescAliases(updated);
+    localStorage.setItem("wdt_desc_aliases", JSON.stringify(updated));
+    await base44.entities.BankTransaction.update(txn.id, { description: newDesc });
+    queryClient.invalidateQueries({ queryKey: ["bankTransactions"] });
+    setEditingDesc(prev => { const n = { ...prev }; delete n[txn.id]; return n; });
+  };
+
   const getRowState = (txn) => rowState[txn.id] || {
     client_code: "WD",
-    paid_by: "WDA",
+    paid_by: "WD",
   };
 
   const updateRowState = (id, field, value) => {
@@ -81,6 +96,8 @@ ${csvText}`,
     if (txns?.length) {
 
       for (const txn of txns) {
+        // Apply saved alias if exists
+        if (descAliases[txn.description]) txn.description = descAliases[txn.description];
         const isWD = /we define|wedefine|wdt/i.test(txn.description);
         const isWD1 = /margin|wd1/i.test(txn.description);
         const autoProcessed = isWD || isWD1;
@@ -250,6 +267,8 @@ ${csvText}`,
                   <th className="p-3 text-left">Description</th>
                   <th className="p-3 text-right">Amount</th>
                   <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Client</th>
+                  <th className="p-3 text-center">Paid By</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -258,7 +277,24 @@ ${csvText}`,
                   <tr key={txn.id} className="border-t border-border hover:bg-muted/20">
                     <td className="p-3 whitespace-nowrap">{formatDateUK(txn.transaction_date)}</td>
                     <td className="p-3">{txn.account_source}</td>
-                    <td className="p-3 max-w-xs truncate">{txn.description}</td>
+                    <td className="p-3 max-w-xs">
+                      {editingDesc[txn.id] !== undefined ? (
+                        <input
+                          autoFocus
+                          className="w-full border border-primary rounded px-2 py-0.5 text-sm"
+                          value={editingDesc[txn.id]}
+                          onChange={e => setEditingDesc(prev => ({ ...prev, [txn.id]: e.target.value }))}
+                          onBlur={() => saveDescAlias(txn, editingDesc[txn.id])}
+                          onKeyDown={e => { if (e.key === "Enter") saveDescAlias(txn, editingDesc[txn.id]); if (e.key === "Escape") setEditingDesc(prev => { const n = { ...prev }; delete n[txn.id]; return n; }); }}
+                        />
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:text-primary truncate block max-w-xs"
+                          title="Click to edit description"
+                          onClick={() => setEditingDesc(prev => ({ ...prev, [txn.id]: txn.description }))}
+                        >{txn.description}</span>
+                      )}
+                    </td>
                     <td className="p-3 text-right font-semibold">{formatCurrency(txn.amount)}</td>
                     <td className="p-3 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -270,21 +306,29 @@ ${csvText}`,
                         {txn.status}
                       </span>
                     </td>
+                    <td className="p-3 text-center">
+                      {txn.status === "pending" && (
+                        <Select value={getRowState(txn).client_code} onValueChange={v => updateRowState(txn.id, "client_code", v)}>
+                          <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </td>
+                    <td className="p-3 text-center">
+                      {txn.status === "pending" && (
+                        <Select value={getRowState(txn).paid_by} onValueChange={v => updateRowState(txn.id, "paid_by", v)}>
+                          <SelectTrigger className="w-20 h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </td>
                     <td className="p-3 text-right">
                       {txn.status === "pending" && (
                         <div className="flex gap-2 justify-end items-center flex-wrap">
-                          <Select value={getRowState(txn).client_code} onValueChange={v => updateRowState(txn.id, "client_code", v)}>
-                            <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          <Select value={getRowState(txn).paid_by} onValueChange={v => updateRowState(txn.id, "paid_by", v)}>
-                            <SelectTrigger className="w-20 h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
                           <Button size="sm" className="text-xs h-7" onClick={() => submitAsExpense.mutate(txn)} disabled={submitAsExpense.isPending}>
                             Submit
                           </Button>
