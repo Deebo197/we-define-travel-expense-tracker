@@ -39,17 +39,18 @@ export default function Accounts() {
     setImporting(true);
     setImportMessage(null);
 
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    // Read CSV as text and pass directly in the prompt
+    const csvText = await file.text();
 
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Parse this bank transaction CSV file and extract all transactions. The file may have columns named: Number, Date, Account, Amount, Subcategory, Memo (or similar variations). Map them as follows:
-- date: from the Date column, convert to YYYY-MM-DD format (input may be DD/MM/YYYY)
-- description: from the Memo or Description column, trim whitespace and tab characters
-- amount: from the Amount column as a number (may be negative for debits — use the absolute value)
-Return ALL rows as transactions, including debits and credits. Do not skip any rows.
+      prompt: `Parse this bank transaction CSV and extract all transactions. Columns may include: Number, Date, Account, Amount, Subcategory, Memo (or similar). Map as follows:
+- date: from Date column, convert to YYYY-MM-DD (input is DD/MM/YYYY)
+- description: from Memo or Description column, trim all whitespace and tab characters
+- amount: from Amount column as a number, use the absolute value (ignore negative sign)
+Return ALL rows. Do not skip any.
 
-File URL: ${file_url}`,
-      file_urls: [file_url],
+CSV content:
+${csvText}`,
       response_json_schema: {
         type: "object",
         properties: {
@@ -58,9 +59,9 @@ File URL: ${file_url}`,
             items: {
               type: "object",
               properties: {
-                date: { type: "string", description: "Date in YYYY-MM-DD format" },
+                date: { type: "string" },
                 description: { type: "string" },
-                amount: { type: "number", description: "Absolute amount in GBP" },
+                amount: { type: "number" },
               },
             },
           },
@@ -68,7 +69,6 @@ File URL: ${file_url}`,
       },
     });
 
-    // InvokeLLM returns the parsed JSON object directly
     const txns = result?.transactions;
 
     if (!txns?.length) {
