@@ -23,6 +23,10 @@ export default function Accounts() {
   const [descAliases, setDescAliases] = useState(() => {
     try { return JSON.parse(localStorage.getItem("wdt_desc_aliases") || "{}"); } catch { return {}; }
   });
+  // Category aliases: description -> category, persisted in localStorage
+  const [catAliases, setCatAliases] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("wdt_cat_aliases") || "{}"); } catch { return {}; }
+  });
   // Reverse map: newDesc -> originalDesc
   const reverseAliases = useMemo(() => {
     const r = {};
@@ -43,7 +47,7 @@ export default function Accounts() {
   const getRowState = (txn) => rowState[txn.id] || {
     client_code: "WD",
     paid_by: "WD",
-    category: "",
+    category: catAliases[txn.description] || "",
   };
 
   const updateRowState = (id, field, value) => {
@@ -174,6 +178,12 @@ ${csvText}`,
         source: "csv_import",
       });
       await base44.entities.BankTransaction.update(txn.id, { status: "expense_submitted" });
+      // Remember category for this description
+      if (category) {
+        const updatedCats = { ...catAliases, [txn.description]: category };
+        setCatAliases(updatedCats);
+        localStorage.setItem("wdt_cat_aliases", JSON.stringify(updatedCats));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bankTransactions"] });
