@@ -50,9 +50,7 @@ export default function SubmitExpense() {
           ...a,
           amount: Math.round((amt * (a.percentage || 0) / 100) * 100) / 100,
         }));
-        if (!updated.actual_cost) {
-          updated.actual_cost = value;
-        }
+        updated.actual_cost = value;
       }
       return updated;
     });
