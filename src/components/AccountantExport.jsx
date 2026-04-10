@@ -78,113 +78,20 @@ export default function AccountantExport() {
 
   const handlePDFExport = async () => {
     try {
+      setShowPDF(true);
       setGeneratingPDF(true);
+      await new Promise(r => setTimeout(r, 500));
       const { jsPDF } = await import("jspdf");
+      const html2canvas = (await import("html2canvas")).default;
+
+      const el = pdfRef.current;
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
+      const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10;
-      let yPos = margin;
-      const lineHeight = 6;
-      const colWidths = { date: 20, desc: 80, receipt: 30, amount: 30 };
-
-      // Helper to add new page
-      const addNewPage = () => {
-        pdf.addPage();
-        yPos = margin;
-      };
-
-      // Header
-      pdf.setFontSize(14);
-      pdf.setTextColor(45, 45, 45);
-      pdf.text("FULL EXPENSE REPORT — ALL CLIENTS", margin, yPos);
-      yPos += 10;
-
-      pdf.setFontSize(10);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text(`Generated: ${new Date().toLocaleDateString("en-GB")}`, margin, yPos);
-      yPos += 8;
-      pdf.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 6;
-
-      // Iterate by client and month
-      Object.entries(groupedByClient).forEach(([clientCode, months]) => {
-        // Client header
-        if (yPos > pageHeight - 30) addNewPage();
-        pdf.setFontSize(12);
-        pdf.setTextColor(200, 16, 46);
-        pdf.text(`${clientCode} — ${getClientName(clientCode)}`, margin, yPos);
-        yPos += 8;
-
-        Object.entries(months).forEach(([month, items]) => {
-          if (yPos > pageHeight - 25) addNewPage();
-
-          // Month subheader
-          pdf.setFontSize(9);
-          pdf.setTextColor(45, 45, 45);
-          pdf.setFont(undefined, "bold");
-          pdf.text(month.toUpperCase(), margin, yPos);
-          yPos += 5;
-          pdf.setFont(undefined, "normal");
-          pdf.setTextColor(100, 100, 100);
-          pdf.setFontSize(8);
-
-          // Column headers
-          const headerY = yPos;
-          pdf.text("Date", margin, headerY);
-          pdf.text("Description", margin + colWidths.date + 2, headerY);
-          pdf.text("Receipt", margin + colWidths.date + colWidths.desc + 2, headerY);
-          pdf.text("Amount", pageWidth - margin - colWidths.amount, headerY);
-          yPos += 4;
-          pdf.line(margin, yPos, pageWidth - margin, yPos);
-          yPos += 2;
-
-          // Items
-          items.forEach((item) => {
-            if (yPos > pageHeight - 10) {
-              addNewPage();
-              pdf.setFontSize(8);
-            }
-
-            pdf.setTextColor(0, 0, 0);
-            pdf.text(formatDateUK(item.date), margin, yPos);
-            pdf.text(item.description.substring(0, 35), margin + colWidths.date + 2, yPos);
-
-            // Receipt code with link
-            if (item.receipt_file) {
-              pdf.setTextColor(200, 16, 46);
-              pdf.textWithLink(item.receipt_code, margin + colWidths.date + colWidths.desc + 2, yPos, { pageNumber: 1, url: item.receipt_file });
-              pdf.setTextColor(0, 0, 0);
-            } else {
-              pdf.setTextColor(150, 150, 150);
-              pdf.text(item.receipt_code, margin + colWidths.date + colWidths.desc + 2, yPos);
-              pdf.setTextColor(0, 0, 0);
-            }
-
-            pdf.text(formatCurrency(item.clientAmount), pageWidth - margin - colWidths.amount, yPos, { align: "right" });
-            yPos += 5;
-          });
-
-          // Month total
-          yPos += 2;
-          pdf.setFont(undefined, "bold");
-          pdf.setTextColor(200, 16, 46);
-          const monthTotal = items.reduce((s, e) => s + (e.clientAmount || 0), 0);
-          pdf.text(`${month.toUpperCase()} TOTAL: ${formatCurrency(monthTotal)}`, pageWidth - margin - colWidths.amount, yPos, { align: "right" });
-          yPos += 6;
-          pdf.setFont(undefined, "normal");
-          pdf.setTextColor(0, 0, 0);
-        });
-      });
-
-      // Grand total
-      yPos += 4;
-      pdf.setFont(undefined, "bold");
-      pdf.setFontSize(11);
-      pdf.setTextColor(200, 16, 46);
-      pdf.text(`OVERALL TOTAL: ${formatCurrency(overallTotal)}`, pageWidth - margin - colWidths.amount, yPos, { align: "right" });
-
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`WDT-Full-Accountant-Report-${dateFrom || "all"}-to-${dateTo || "all"}.pdf`);
     } catch (error) {
       console.error("PDF export failed:", error);
@@ -263,7 +170,7 @@ export default function AccountantExport() {
                         <div key={item.id + "-" + i} className={`grid grid-cols-[80px_1fr_90px_70px] px-3 py-1.5 text-xs border-b border-gray-100 ${i % 2 === 1 ? "bg-[#F5F5F5]" : ""}`}>
                           <span>{formatDateUK(item.date)}</span>
                           <span>{item.description}</span>
-                          <span>{item.receipt_file ? <a href={item.receipt_file} className="text-[#C8102E]">{item.receipt_code}</a> : <span className="text-gray-400">{item.receipt_code}</span>}</span>
+                          <span>{item.receipt_file ? <a href={item.receipt_file} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] underline cursor-pointer">{item.receipt_code}</a> : <span className="text-gray-400">{item.receipt_code}</span>}</span>
                           <span className="text-right">{formatCurrency(item.clientAmount)}</span>
                         </div>
                       ))}
