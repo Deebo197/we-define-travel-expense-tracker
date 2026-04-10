@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Download, FileText, AlertCircle } from "lucide-react";
-import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth } from "@/lib/constants";
+import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient } from "@/lib/constants";
 import AccountantExport from "../components/AccountantExport";
 
 export default function Accounts() {
@@ -37,6 +37,7 @@ export default function Accounts() {
   const getRowState = (txn) => rowState[txn.id] || {
     client_code: "WD",
     paid_by: "WD",
+    category: "",
   };
 
   const updateRowState = (id, field, value) => {
@@ -146,7 +147,7 @@ ${csvText}`,
 
   const submitAsExpense = useMutation({
     mutationFn: async (txn) => {
-      const { client_code, paid_by } = getRowState(txn);
+      const { client_code, paid_by, category } = getRowState(txn);
       const clientName = getClientName(client_code);
       await base44.entities.Expense.create({
         date: txn.transaction_date,
@@ -155,6 +156,7 @@ ${csvText}`,
         actual_cost: txn.amount,
         vat: false,
         paid_by,
+        category: category || "",
         client_allocations: [{ client_code, client_name: clientName, percentage: 100, amount: txn.amount }],
         receipt_code: `${client_code}-TXN`,
         reimbursement_required: false,
@@ -269,6 +271,7 @@ ${csvText}`,
                   <th className="p-3 text-center">Status</th>
                   <th className="p-3 text-center">Client</th>
                   <th className="p-3 text-center">Paid By</th>
+                  <th className="p-3 text-center">Category</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -325,6 +328,19 @@ ${csvText}`,
                           </SelectContent>
                         </Select>
                       )}
+                    </td>
+                    <td className="p-3 text-center">
+                      {txn.status === "pending" && (() => {
+                        const cats = getCategoriesForClient(getRowState(txn).client_code);
+                        return (
+                          <Select value={getRowState(txn).category} onValueChange={v => updateRowState(txn.id, "category", v)}>
+                            <SelectTrigger className="w-36 h-7 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+                            <SelectContent>
+                              {cats.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                     </td>
                     <td className="p-3 text-right">
                       {txn.status === "pending" && (
