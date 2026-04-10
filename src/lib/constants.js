@@ -50,6 +50,35 @@ export function isReimbursementRequired(paidByCode) {
   return REIMBURSEMENT_CODES.includes(paidByCode);
 }
 
+export const WDT_CATEGORIES = [
+  "WDT - Travel",
+  "WDT - Client Entertainment & Networking",
+  "WDT - Marketing & Advertising",
+  "WDT - Partner / Campaign Costs",
+  "WDT - Office & General Costs",
+  "WDT - Technology & Software",
+  "WDT - Phone & Communication",
+  "WDT - Professional Fees",
+  "WDT - Staff Costs",
+  "WDT - Finance Costs",
+  "WDT - Insurance",
+  "WDT - Rent / Office",
+  "WDT - Miscellaneous",
+];
+
+export const CLIENT_CATEGORIES = [
+  "Client Expenses - Accommodation",
+  "Client Expenses - Meals",
+  "Client Expenses - Entertainment",
+  "Client Expenses - Transport",
+  "Client Expenses - Miscellaneous",
+];
+
+export function getCategoriesForClient(clientCode) {
+  if (clientCode === "WD" || clientCode === "WD1") return WDT_CATEGORIES;
+  return CLIENT_CATEGORIES;
+}
+
 export function formatMonth(dateStr) {
   const d = new Date(dateStr);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

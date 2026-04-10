@@ -177,6 +177,9 @@ export default function Reimbursements() {
                         <p className="text-sm text-muted-foreground truncate mt-0.5">
                           {item.description || item.purpose}
                         </p>
+                        {item.category && (
+                          <p className="text-xs text-muted-foreground/70 mt-0.5">{item.category}</p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {item.client_allocations?.map(a => a.client_code).join(", ")}
                         </p>

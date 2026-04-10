@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle2, Loader2 } from "lucide-react";
 import ReceiptCapture from "../components/ReceiptCapture";
 import ClientSplitInput from "../components/ClientSplitInput";
-import { PAID_BY_CODES, formatMonth, isReimbursementRequired, formatCurrency } from "@/lib/constants";
+import { PAID_BY_CODES, formatMonth, isReimbursementRequired, formatCurrency, getCategoriesForClient } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
 export default function SubmitExpense() {
@@ -26,6 +26,7 @@ export default function SubmitExpense() {
     actual_cost: "",
     vat: false,
     paid_by: "",
+    category: "",
     receipt_file: "",
     receipt_url: "",
     client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }],
@@ -72,8 +73,17 @@ export default function SubmitExpense() {
   };
 
   const handleAllocationsChange = (allocations) => {
-    setForm(f => ({ ...f, client_allocations: allocations }));
+    setForm(f => {
+      // Reset category if primary client changes
+      const newPrimary = allocations[0]?.client_code;
+      const oldPrimary = f.client_allocations[0]?.client_code;
+      const category = newPrimary !== oldPrimary ? "" : f.category;
+      return { ...f, client_allocations: allocations, category };
+    });
   };
+
+  const primaryClient = form.client_allocations[0]?.client_code;
+  const categories = primaryClient ? getCategoriesForClient(primaryClient) : [];
 
   const totalPct = form.client_allocations.reduce((s, a) => s + (a.percentage || 0), 0);
   const canSubmit = form.date && form.description && form.paid_amount && form.paid_by
@@ -99,6 +109,7 @@ export default function SubmitExpense() {
       actual_cost: parseFloat(form.actual_cost) || parseFloat(form.paid_amount),
       vat: form.vat,
       paid_by: form.paid_by,
+      category: form.category || "",
       receipt_file: form.receipt_file,
       receipt_url: form.receipt_file,
       client_allocations: form.client_allocations,
@@ -126,7 +137,7 @@ export default function SubmitExpense() {
         <h2 className="text-xl font-bold mb-2">Expense Submitted</h2>
         <p className="text-muted-foreground mb-1">Receipt Code</p>
         <p className="text-2xl font-bold text-primary mb-6">{success}</p>
-        <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, receipt_file: "", receipt_url: "", client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
+        <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
           Submit Another
         </Button>
       </div>
@@ -234,6 +245,23 @@ export default function SubmitExpense() {
             paidAmount={parseFloat(form.paid_amount) || 0}
           />
         </div>
+
+        {/* Category */}
+        {primaryClient && (
+          <div>
+            <Label className="text-sm font-medium">Category *</Label>
+            <Select value={form.category} onValueChange={v => updateField("category", v)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Submit */}
         <Button type="submit" className="w-full h-11" disabled={!canSubmit || submitting}>

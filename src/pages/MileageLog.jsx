@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2, Loader2, MapPin, Calculator } from "lucide-react";
 import ClientSplitInput from "../components/ClientSplitInput";
 import ReimbursementBadge from "../components/ReimbursementBadge";
-import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired } from "@/lib/constants";
+import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
 export default function MileageLog() {
@@ -41,6 +41,7 @@ export default function MileageLog() {
       vehicle_type: "Car",
       purpose: "",
       paid_by: "",
+      category: "",
       stops: [
         { label: "A", postcode: "" },
         { label: "B", postcode: "" },
@@ -51,6 +52,9 @@ export default function MileageLog() {
       client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }],
     };
   }
+
+  const primaryMileageClient = form.client_allocations[0]?.client_code;
+  const mileageCategories = primaryMileageClient ? getCategoriesForClient(primaryMileageClient) : [];
 
   const addStop = () => {
     const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -140,6 +144,7 @@ export default function MileageLog() {
       total_miles: parseFloat(form.total_miles) || 0,
       total_cost: parseFloat(form.total_cost) || 0,
       client_allocations: form.client_allocations,
+      category: form.category || "",
       reimbursement_required: isReimbursementRequired(form.paid_by),
       reimbursement_paid: false,
       receipt_code: receiptCode,
@@ -329,12 +334,31 @@ export default function MileageLog() {
               </div>
             </div>
 
+            {/* Category */}
+            {primaryMileageClient && (
+              <div>
+                <Label className="text-sm font-medium">Category *</Label>
+                <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {mileageCategories.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Client split */}
             <div className="border-t border-border pt-4">
               <Label className="text-sm font-semibold mb-3 block">Client Allocation</Label>
               <ClientSplitInput
                 allocations={form.client_allocations}
-                onChange={a => setForm(f => ({ ...f, client_allocations: a }))}
+                onChange={a => {
+                  const newPrimary = a[0]?.client_code;
+                  const oldPrimary = form.client_allocations[0]?.client_code;
+                  setForm(f => ({ ...f, client_allocations: a, category: newPrimary !== oldPrimary ? "" : f.category }));
+                }}
                 paidAmount={parseFloat(form.total_cost) || 0}
               />
             </div>

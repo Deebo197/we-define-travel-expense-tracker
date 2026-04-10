@@ -114,6 +114,7 @@ export default function AllExpenses() {
               <th className="p-3 text-left">Submitted By</th>
               <th className="p-3 text-left">Client(s)</th>
               <th className="p-3 text-left">Description</th>
+              <th className="p-3 text-left">Category</th>
               <th className="p-3 text-left">Paid By</th>
               <th className="p-3 text-right">Amount</th>
               <th className="p-3 text-center">VAT</th>
@@ -136,6 +137,7 @@ export default function AllExpenses() {
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.submitted_by_name || exp.submitted_by}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.client_allocations?.map(a => a.client_code).join(", ")}</td>
                 <td className="p-3 max-w-xs truncate cursor-pointer" onClick={() => setSelected(exp)}>{exp.description}</td>
+                <td className="p-3 text-xs text-muted-foreground cursor-pointer max-w-[140px] truncate" onClick={() => setSelected(exp)}>{exp.category}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.paid_by}</td>
                 <td className="p-3 text-right font-semibold whitespace-nowrap">{formatCurrency(exp.paid_amount)}</td>
                 <td className="p-3 text-center">{exp.vat ? "Y" : "N"}</td>
@@ -177,6 +179,7 @@ export default function AllExpenses() {
                 <div><span className="text-muted-foreground">Submitted By:</span><br />{selected.submitted_by_name}</div>
               </div>
               <div><span className="text-muted-foreground">Description:</span><p className="mt-1">{selected.description}</p></div>
+              {selected.category && <div><span className="text-muted-foreground">Category:</span><p className="mt-1 font-medium">{selected.category}</p></div>}
               <div>
                 <span className="text-muted-foreground">Client(s):</span>
                 <div className="mt-1 space-y-1">

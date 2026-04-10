@@ -32,6 +32,10 @@
       "type": "string",
       "title": "Purpose"
     },
+    "category": {
+      "type": "string",
+      "title": "Category"
+    },
     "stops": {
       "type": "array",
       "title": "Stops",

@@ -46,6 +46,10 @@
       "type": "string",
       "title": "Description"
     },
+    "category": {
+      "type": "string",
+      "title": "Category"
+    },
     "actual_cost": {
       "type": "number",
       "title": "Actual Cost"

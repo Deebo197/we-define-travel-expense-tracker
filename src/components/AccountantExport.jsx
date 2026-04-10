@@ -32,11 +32,12 @@ export default function AccountantExport() {
 
   const handleCSVExport = () => {
     setGeneratingCSV(true);
-    const headers = ["Date","Client(s)","Description","Paid By","Actual Cost","Paid Amount","VAT","Receipt Code","Split Details","Reimbursement Required","Reimbursement Paid","Month","Year","Receipt URL"];
+    const headers = ["Date","Client(s)","Description","Category","Paid By","Actual Cost","Paid Amount","VAT","Receipt Code","Split Details","Reimbursement Required","Reimbursement Paid","Month","Year","Receipt URL"];
     const rows = filtered.map(e => [
       formatDateUK(e.date),
       e.client_allocations?.map(a => `${a.client_code}(${a.percentage}%)`).join("; "),
       `"${(e.description || "").replace(/"/g, '""')}"`,
+      `"${(e.category || "").replace(/"/g, '""')}"`,
       e.paid_by,
       e.actual_cost || "",
       e.paid_amount || "",
