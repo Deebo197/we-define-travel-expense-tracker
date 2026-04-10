@@ -106,31 +106,49 @@ function detectCorners(imageSrc) {
         }
       }
 
-      // Threshold: keep top ~8% strongest edges
-      const threshold = maxEdge * 0.25;
+      // ---- Luminance-based receipt detection ----
+      // Receipts are bright (white/light) on darker backgrounds.
+      // Build a luminance map and find the bright bounding region per quadrant.
 
-      // Margin to exclude image border noise (3% of dimension)
-      const mx = Math.round(w * 0.03), my = Math.round(h * 0.03);
+      // Compute median luminance to set a dynamic threshold
+      const lums = Array.from(gray).sort((a, b) => a - b);
+      const medianLum = lums[Math.floor(lums.length * 0.5)];
+      // Bright pixels = significantly above median (receipt paper)
+      const lumThreshold = Math.min(medianLum + 40, 200);
 
-      // For each quadrant, find the strong edge pixel CLOSEST TO THE IMAGE CENTER.
-      // This finds the receipt's own corners rather than background/border noise.
+      // Border margin to ignore camera vignetting / edge noise
+      const mx = Math.round(w * 0.04), my = Math.round(h * 0.04);
+
+      // For each quadrant, find the strong-edge pixel that is also bright
+      // and closest to the OUTER corner of that quadrant.
+      const threshold = maxEdge * 0.2;
       const hw = w / 2, hh = h / 2;
-      const icx = w / 2, icy = h / 2; // image center — target for all quadrants
       const quadrants = [
-        { x0: 0,  y0: 0,  x1: hw, y1: hh, fx: Math.round(w*0.1), fy: Math.round(h*0.1) }, // TL fallback
-        { x0: hw, y0: 0,  x1: w,  y1: hh, fx: Math.round(w*0.9), fy: Math.round(h*0.1) }, // TR fallback
-        { x0: hw, y0: hh, x1: w,  y1: h,  fx: Math.round(w*0.9), fy: Math.round(h*0.9) }, // BR fallback
-        { x0: 0,  y0: hh, x1: hw, y1: h,  fx: Math.round(w*0.1), fy: Math.round(h*0.9) }, // BL fallback
+        { x0: mx,   y0: my,   x1: hw,    y1: hh,    cx: 0,   cy: 0,   fx: Math.round(w*0.15), fy: Math.round(h*0.15) },
+        { x0: hw,   y0: my,   x1: w-mx,  y1: hh,    cx: w-1, cy: 0,   fx: Math.round(w*0.85), fy: Math.round(h*0.15) },
+        { x0: hw,   y0: hh,   x1: w-mx,  y1: h-my,  cx: w-1, cy: h-1, fx: Math.round(w*0.85), fy: Math.round(h*0.85) },
+        { x0: mx,   y0: hh,   x1: hw,    y1: h-my,  cx: 0,   cy: h-1, fx: Math.round(w*0.15), fy: Math.round(h*0.85) },
       ];
 
-      const result = quadrants.map(({ x0, y0, x1, y1, fx, fy }) => {
+      const result = quadrants.map(({ x0, y0, x1, y1, cx, cy, fx, fy }) => {
         let bestDist = Infinity, bestX = fx, bestY = fy;
-        for (let y = Math.max(y0, my); y < Math.min(y1, h - my); y++) {
-          for (let x = Math.max(x0, mx); x < Math.min(x1, w - mx); x++) {
-            if (edges[y*w+x] >= threshold) {
-              // Distance to image center — smaller = closer to receipt corner
-              const d = Math.hypot(x - icx, y - icy);
+        for (let y = y0; y < y1; y++) {
+          for (let x = x0; x < x1; x++) {
+            // Must be a strong edge AND a bright (receipt-paper) pixel nearby
+            if (edges[y*w+x] >= threshold && gray[y*w+x] >= lumThreshold) {
+              const d = Math.hypot(x - cx, y - cy);
               if (d < bestDist) { bestDist = d; bestX = x; bestY = y; }
+            }
+          }
+        }
+        // Fallback: just find the outermost bright pixel in this quadrant
+        if (bestDist === Infinity) {
+          for (let y = y0; y < y1; y++) {
+            for (let x = x0; x < x1; x++) {
+              if (gray[y*w+x] >= lumThreshold) {
+                const d = Math.hypot(x - cx, y - cy);
+                if (d < bestDist) { bestDist = d; bestX = x; bestY = y; }
+              }
             }
           }
         }
