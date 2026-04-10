@@ -409,7 +409,9 @@ ${csvText}`,
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (() => {
-                        const cats = getCategoriesForClient(getRowState(txn).client_code);
+                        const allocations = getRowAllocations(txn);
+                        const hasNonWDClient = allocations.some(a => a.client_code !== "WD" && a.client_code !== "WD1");
+                        const cats = hasNonWDClient ? CLIENT_CATEGORIES : getCategoriesForClient(getRowState(txn).client_code);
                         return (
                           <Select value={getRowState(txn).category} onValueChange={v => updateRowState(txn.id, "category", v)}>
                             <SelectTrigger className="w-28 h-6 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
