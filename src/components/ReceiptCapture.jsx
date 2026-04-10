@@ -2,15 +2,17 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, Loader2, FileText, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import ImageCropper from "./ImageCropper";
 
 export default function ReceiptCapture({ onFileUploaded, onOCRComplete, receiptUrl }) {
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [preview, setPreview] = useState(receiptUrl || null);
+  const [cropSrc, setCropSrc] = useState(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  const handleFile = async (file) => {
+  const processFile = async (file) => {
     if (!file) return;
     setUploading(true);
 
@@ -46,14 +48,44 @@ export default function ReceiptCapture({ onFileUploaded, onOCRComplete, receiptU
     setProcessing(false);
   };
 
+  const handleFile = (file) => {
+    if (!file) return;
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => setCropSrc(e.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      processFile(file);
+    }
+  };
+
+  const handleCropDone = (croppedFile) => {
+    setCropSrc(null);
+    processFile(croppedFile);
+  };
+
+  const handleSkipCrop = () => {
+    // Re-read original file from cropSrc data URL
+    fetch(cropSrc)
+      .then(r => r.blob())
+      .then(blob => {
+        const file = new File([blob], "receipt.jpg", { type: "image/jpeg" });
+        setCropSrc(null);
+        processFile(file);
+      });
+  };
+
   const clearReceipt = () => {
     setPreview(null);
+    setCropSrc(null);
     onFileUploaded("");
   };
 
   return (
     <div className="space-y-3">
-      {!preview ? (
+      {cropSrc ? (
+        <ImageCropper imageSrc={cropSrc} onCropDone={handleCropDone} onSkip={handleSkipCrop} />
+      ) : !preview ? (
         <div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-muted/30">
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
