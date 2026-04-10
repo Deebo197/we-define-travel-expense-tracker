@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,10 @@ export default function Accounts() {
   const [catAliases, setCatAliases] = useState(() => {
     try { return JSON.parse(localStorage.getItem("wdt_cat_aliases") || "{}"); } catch { return {}; }
   });
+  // VAT aliases: description -> boolean, persisted in localStorage
+  const [vatAliases, setVatAliases] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("wdt_vat_aliases") || "{}"); } catch { return {}; }
+  });
   // Reverse map: newDesc -> originalDesc
   const reverseAliases = useMemo(() => {
     const r = {};
@@ -48,6 +53,7 @@ export default function Accounts() {
     client_code: "WD",
     paid_by: "WD",
     category: catAliases[txn.description] || "",
+    vat: vatAliases[txn.description] || false,
   };
 
   const updateRowState = (id, field, value) => {
@@ -164,7 +170,7 @@ ${csvText}`,
         description: txn.description,
         paid_amount: txn.amount,
         actual_cost: txn.amount,
-        vat: false,
+        vat: getRowState(txn).vat || false,
         paid_by,
         category: category || "",
         client_allocations: [{ client_code, client_name: clientName, percentage: 100, amount: txn.amount }],
@@ -184,6 +190,11 @@ ${csvText}`,
         setCatAliases(updatedCats);
         localStorage.setItem("wdt_cat_aliases", JSON.stringify(updatedCats));
       }
+      // Remember VAT for this description
+      const vat = getRowState(txn).vat || false;
+      const updatedVats = { ...vatAliases, [txn.description]: vat };
+      setVatAliases(updatedVats);
+      localStorage.setItem("wdt_vat_aliases", JSON.stringify(updatedVats));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bankTransactions"] });
@@ -288,6 +299,7 @@ ${csvText}`,
                   <th className="p-3 text-center">Client</th>
                   <th className="p-3 text-center">Paid By</th>
                   <th className="p-3 text-center">Category</th>
+                  <th className="p-3 text-center">VAT</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -365,9 +377,17 @@ ${csvText}`,
                         );
                       })()}
                     </td>
+                    <td className="p-3 text-center">
+                       {txn.status === "pending" && (
+                         <Checkbox
+                           checked={getRowState(txn).vat || false}
+                           onCheckedChange={v => updateRowState(txn.id, "vat", !!v)}
+                         />
+                       )}
+                     </td>
                     <td className="p-3 text-right">
-                      {txn.status === "pending" && (
-                        <div className="flex gap-2 justify-end items-center flex-wrap">
+                       {txn.status === "pending" && (
+                         <div className="flex gap-2 justify-end items-center flex-wrap">
                           <Button size="sm" className="text-xs h-7" onClick={() => submitAsExpense.mutate(txn)} disabled={submitAsExpense.isPending}>
                             Submit
                           </Button>
