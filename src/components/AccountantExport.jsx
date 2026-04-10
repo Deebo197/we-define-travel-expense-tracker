@@ -77,23 +77,30 @@ export default function AccountantExport() {
   }, [filtered]);
 
   const handlePDFExport = async () => {
-    setShowPDF(true);
-    setGeneratingPDF(true);
-    // Wait for render
-    await new Promise(r => setTimeout(r, 500));
-    const { default: jsPDF } = await import("jspdf");
-    const { default: html2canvas } = await import("html2canvas");
+    try {
+      setShowPDF(true);
+      setGeneratingPDF(true);
+      // Wait for render
+      await new Promise(r => setTimeout(r, 500));
+      const { jsPDF } = await import("jspdf");
+      const html2canvas = (await import("html2canvas")).default;
 
-    const el = pdfRef.current;
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true });
-    const imgData = canvas.toDataURL("image/png");
+      const el = pdfRef.current;
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
 
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`WDT-Full-Accountant-Report-${dateFrom || "all"}-to-${dateTo || "all"}.pdf`);
-    setGeneratingPDF(false);
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`WDT-Full-Accountant-Report-${dateFrom || "all"}-to-${dateTo || "all"}.pdf`);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setGeneratingPDF(false);
+      setShowPDF(false);
+    }
   };
 
   const overallTotal = filtered.reduce((s, e) => s + (e.paid_amount || 0), 0);
