@@ -93,24 +93,31 @@ export default function AccountantExport() {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
-      // Add clickable areas over receipt codes
-      let currentY = 58;
-      Object.entries(groupedByClient).forEach(([clientCode, months]) => {
-        currentY += 7; // Client header
-        Object.entries(months).forEach(([month, items]) => {
-          currentY += 6; // Month header
-          items.forEach((item) => {
-            if (item.receipt_file) {
-              // Add clickable link area directly on receipt code
-              pdf.link([115, currentY - 4, 35, 5], { url: item.receipt_file });
-            }
-            currentY += 6; // Row height
-          });
-          currentY += 5; // Month total row
-        });
-      });
+
 
       pdf.save(`WDT-Full-Accountant-Report-${dateFrom || "all"}-to-${dateTo || "all"}.pdf`);
+
+      // Add clickable links via textWithLink after image
+      let pageNum = 1;
+      let rowY = 56;
+      Object.entries(groupedByClient).forEach(([clientCode, months]) => {
+        rowY += 8;
+        Object.entries(months).forEach(([month, items]) => {
+          rowY += 6;
+          items.forEach((item) => {
+            if (item.receipt_file) {
+              pdf.textWithLink(item.receipt_code, 130, rowY, { pageNumber: 0, y: rowY });
+            }
+            rowY += 6;
+            if (rowY > 270) {
+              pdf.addPage();
+              rowY = 10;
+              pageNum += 1;
+            }
+          });
+          rowY += 5;
+        });
+      });
     } catch (error) {
       console.error("PDF export failed:", error);
       alert("Failed to generate PDF. Please try again.");
