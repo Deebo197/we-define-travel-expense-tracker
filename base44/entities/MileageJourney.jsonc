@@ -99,6 +99,14 @@
       "type": "string",
       "title": "Receipt Code"
     },
+    "route_image_url": {
+      "type": "string",
+      "title": "Route Image URL"
+    },
+    "route_image_code": {
+      "type": "string",
+      "title": "Route Image Code"
+    },
     "month": {
       "type": "string",
       "title": "Month"

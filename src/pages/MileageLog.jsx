@@ -123,19 +123,45 @@ export default function MileageLog() {
     setCalculating(false);
   };
 
+  const generateRouteImage = async (stops) => {
+    try {
+      const postcodes = stops.map(s => s.postcode).filter(Boolean);
+      if (postcodes.length < 2) return null;
+      const coords = [];
+      for (const pc of postcodes) {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pc + ', UK')}&format=json&limit=1`, { headers: { 'Accept-Language': 'en' } });
+        const data = await res.json();
+        if (data[0]) coords.push({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+      }
+      if (coords.length < 2) return null;
+      const markers = coords.map(c => `${c.lat},${c.lon},ol-marker-blue`).join('|');
+      const path = coords.map(c => `${c.lat},${c.lon}`).join('|');
+      const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?size=600x400&maptype=mapnik&markers=${markers}&path=color:0x0000ff|weight:3|${path}&zoom=10`;
+      const imgRes = await fetch(mapUrl);
+      if (!imgRes.ok) return null;
+      const blob = await imgRes.blob();
+      const file = new File([blob], 'route_map.png', { type: 'image/png' });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      return file_url;
+    } catch {
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     const primaryClient = form.client_allocations[0]?.client_code;
+    const routeImageUrl = await generateRouteImage(form.stops);
     const receiptCode = await generateReceiptCode(primaryClient, form.date);
+    const routeImageCode = routeImageUrl ? `ROUTE-${receiptCode}` : '';
     const month = formatMonth(form.date);
     const year = new Date(form.date).getFullYear();
-    const rate = getRate();
     const paidByEntry = PAID_BY_CODES.find(p => p.code === form.paid_by);
 
     await base44.entities.MileageJourney.create({
       date: form.date,
       vehicle_type: form.vehicle_type,
-      rate_per_mile: rate,
+      rate_per_mile: getRate(),
       purpose: form.purpose,
       staff_member: form.paid_by,
       staff_member_name: paidByEntry?.label || form.paid_by,
@@ -148,6 +174,8 @@ export default function MileageLog() {
       reimbursement_required: isReimbursementRequired(form.paid_by),
       reimbursement_paid: false,
       receipt_code: receiptCode,
+      route_image_url: routeImageUrl || '',
+      route_image_code: routeImageCode,
       month,
       year,
     });
@@ -213,6 +241,7 @@ export default function MileageLog() {
               <th className="p-3 text-right">Cost</th>
               <th className="p-3 text-left">Client(s)</th>
               <th className="p-3 text-center">Reimb.</th>
+              <th className="p-3 text-left">Route Map</th>
             </tr>
           </thead>
           <tbody>
@@ -228,6 +257,13 @@ export default function MileageLog() {
                 <td className="p-3">{j.client_allocations?.map(a => a.client_code).join(", ")}</td>
                 <td className="p-3 text-center">
                   <ReimbursementBadge required={j.reimbursement_required} paid={j.reimbursement_paid} />
+                </td>
+                <td className="p-3">
+                  {j.route_image_url ? (
+                    <a href={j.route_image_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs hover:underline font-mono">
+                      {j.route_image_code || 'View Map'}
+                    </a>
+                  ) : <span className="text-xs text-muted-foreground">—</span>}
                 </td>
               </tr>
             ))}
