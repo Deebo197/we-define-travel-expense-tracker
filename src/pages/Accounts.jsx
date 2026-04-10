@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Paperclip } from "lucide-react";
+import { Paperclip, SplitSquareHorizontal } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ClientSplitInput from "../components/ClientSplitInput";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,8 @@ export default function Accounts() {
   const [tab, setTab] = useState("pending");
   const [rowState, setRowState] = useState({});
   const [rowReceipts, setRowReceipts] = useState({}); // { [txnId]: { url, name } }
+  const [rowAllocations, setRowAllocations] = useState({}); // { [txnId]: [...allocations] }
+  const [splitDialogTxn, setSplitDialogTxn] = useState(null);
   const receiptInputRefs = useRef({});
 
   // Description aliases: original -> custom, persisted in localStorage
@@ -57,6 +61,12 @@ export default function Accounts() {
     paid_by: "WD",
     category: catAliases[txn.description] || "",
     vat: vatAliases[txn.description] || false,
+  };
+
+  const getRowAllocations = (txn) => {
+    if (rowAllocations[txn.id]) return rowAllocations[txn.id];
+    const code = getRowState(txn).client_code;
+    return [{ client_code: code, client_name: getClientName(code), percentage: 100, amount: txn.amount }];
   };
 
   const updateRowState = (id, field, value) => {
@@ -172,8 +182,8 @@ ${csvText}`,
 
   const submitAsExpense = useMutation({
     mutationFn: async (txn) => {
-      const { client_code, paid_by, category } = getRowState(txn);
-      const clientName = getClientName(client_code);
+      const { paid_by, category } = getRowState(txn);
+      const allocations = getRowAllocations(txn);
       const receipt = rowReceipts[txn.id];
       await base44.entities.Expense.create({
         date: txn.transaction_date,
@@ -185,8 +195,8 @@ ${csvText}`,
         receipt_url: receipt?.url || "",
         paid_by,
         category: category || "",
-        client_allocations: [{ client_code, client_name: clientName, percentage: 100, amount: txn.amount }],
-        receipt_code: `${client_code}-TXN`,
+        client_allocations: allocations,
+        receipt_code: `${allocations[0]?.client_code || "WD"}-TXN`,
         reimbursement_required: false,
         reimbursement_paid: false,
         month: formatMonth(txn.transaction_date),
@@ -358,13 +368,29 @@ ${csvText}`,
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (
-                        <Select value={getRowState(txn).client_code} onValueChange={v => updateRowState(txn.id, "client_code", v)}>
-                          <SelectTrigger className="w-20 h-6 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center gap-1">
+                          <Select value={getRowState(txn).client_code} onValueChange={v => {
+                            updateRowState(txn.id, "client_code", v);
+                            // Reset allocations when primary client changes
+                            setRowAllocations(prev => { const n = {...prev}; delete n[txn.id]; return n; });
+                          }}>
+                            <SelectTrigger className="w-20 h-6 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className={`h-6 w-6 p-0 ${rowAllocations[txn.id] ? "text-primary" : "text-muted-foreground"}`}
+                            title="Split by client"
+                            onClick={() => setSplitDialogTxn(txn)}
+                          >
+                            <SplitSquareHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       )}
+                      {txn.status !== "pending" && txn.client_allocations?.map(a => a.client_code).join(", ")}
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (
@@ -438,6 +464,26 @@ ${csvText}`,
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Client split dialog */}
+      {splitDialogTxn && (
+        <Dialog open={!!splitDialogTxn} onOpenChange={() => setSplitDialogTxn(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Split Client Allocation</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mb-2">{splitDialogTxn.description} — <strong>{formatCurrency(splitDialogTxn.amount)}</strong></p>
+            <ClientSplitInput
+              allocations={getRowAllocations(splitDialogTxn)}
+              onChange={allocs => setRowAllocations(prev => ({ ...prev, [splitDialogTxn.id]: allocs }))}
+              paidAmount={splitDialogTxn.amount}
+            />
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setSplitDialogTxn(null)}>Done</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Accountant Export */}
       <AccountantExport />
