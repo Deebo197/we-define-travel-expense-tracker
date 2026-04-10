@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
+import PersonAvatar from "../components/PersonAvatar";
 import { CLIENT_CODES, formatCurrency, formatDateUK, getClientName } from "@/lib/constants";
 
 export default function MyExpenses() {
@@ -113,7 +114,7 @@ export default function MyExpenses() {
            <div><span className="text-muted-foreground">Date:</span><br />{formatDateUK(selected.date)}</div>
            <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary font-medium">{selected.receipt_code}</span></div>
            <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
-           <div><span className="text-muted-foreground">Paid By:</span><br />{selected.paid_by}</div>
+           <div><span className="text-muted-foreground">Paid By:</span><br /><PersonAvatar code={selected.paid_by} size="sm" showName={true} /></div>
           </div>
           <div className="text-sm">
            <span className="text-muted-foreground">Description:</span>

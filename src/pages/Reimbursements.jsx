@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import PersonAvatar from "../components/PersonAvatar";
 import { formatCurrency, formatDateUK, PAID_BY_CODES, getPaidByLabel } from "@/lib/constants";
 
 export default function Reimbursements() {
@@ -109,12 +110,13 @@ export default function Reimbursements() {
               <button
                 key={p.code}
                 onClick={() => toggleCode(p.code)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${
                   selectedCodes.includes(p.code)
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-background border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
+                <PersonAvatar code={p.code} size="xs" />
                 {p.code} — {p.label}
               </button>
             ))}
@@ -163,12 +165,16 @@ export default function Reimbursements() {
             return (
               <div key={person} className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 bg-muted/30 border-b border-border">
-                  <h3 className="font-semibold">{person}</h3>
+                  <div className="flex items-center gap-2">
+                    <PersonAvatar code={items[0]?.paidByCode} size="sm" />
+                    <h3 className="font-semibold">{person}</h3>
+                  </div>
                   <span className="text-lg font-bold text-primary">{formatCurrency(total)}</span>
                 </div>
                 <div className="divide-y divide-border">
                   {items.map(item => (
                     <div key={item.id} className="flex items-center gap-4 px-5 py-3">
+                      <PersonAvatar code={item.paidByCode} size="sm" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{formatDateUK(item.date)}</span>
