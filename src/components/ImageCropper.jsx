@@ -109,6 +109,9 @@ function detectCorners(imageSrc) {
       // Threshold: keep top ~8% strongest edges
       const threshold = maxEdge * 0.25;
 
+      // Margin to exclude image border noise (3% of dimension)
+      const mx = Math.round(w * 0.03), my = Math.round(h * 0.03);
+
       // For each quadrant, find the strong edge pixel CLOSEST TO THE IMAGE CENTER.
       // This finds the receipt's own corners rather than background/border noise.
       const hw = w / 2, hh = h / 2;
