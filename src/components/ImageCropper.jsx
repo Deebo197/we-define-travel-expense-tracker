@@ -53,12 +53,12 @@ function perspectiveWarp(srcDataUrl, corners) {
   });
 }
 
-// ─── Edge detection ───────────────────────────────────────────────────────────
+// ─── Edge detection via Sobel ────────────────────────────────────────────────
 function detectCorners(imageSrc) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      const scale = Math.min(1, 1000 / Math.max(img.width, img.height));
+      const scale = Math.min(1, 800 / Math.max(img.width, img.height));
       const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
@@ -66,37 +66,83 @@ function detectCorners(imageSrc) {
       ctx.drawImage(img, 0, 0, w, h);
       const { data } = ctx.getImageData(0, 0, w, h);
 
-      const px = (x, y) => { const i = (y * w + x) * 4; return [data[i], data[i+1], data[i+2]]; };
-      const corners4 = [px(0,0), px(w-1,0), px(0,h-1), px(w-1,h-1)];
-      const bg = [
-        corners4.reduce((s,c)=>s+c[0],0)/4,
-        corners4.reduce((s,c)=>s+c[1],0)/4,
-        corners4.reduce((s,c)=>s+c[2],0)/4,
+      // Grayscale
+      const gray = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        gray[i] = Math.round(0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2]);
+      }
+
+      // Gaussian blur 3x3 to reduce noise
+      const blurred = new Uint8Array(w * h);
+      const kernel = [1,2,1,2,4,2,1,2,1];
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          let sum = 0;
+          let k = 0;
+          for (let ky = -1; ky <= 1; ky++) {
+            for (let kx = -1; kx <= 1; kx++) {
+              sum += gray[(y+ky)*w+(x+kx)] * kernel[k++];
+            }
+          }
+          blurred[y*w+x] = sum / 16;
+        }
+      }
+
+      // Sobel edge magnitude
+      const edges = new Float32Array(w * h);
+      let maxEdge = 0;
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const gx =
+            -blurred[(y-1)*w+(x-1)] + blurred[(y-1)*w+(x+1)]
+            -2*blurred[y*w+(x-1)]   + 2*blurred[y*w+(x+1)]
+            -blurred[(y+1)*w+(x-1)] + blurred[(y+1)*w+(x+1)];
+          const gy =
+            -blurred[(y-1)*w+(x-1)] - 2*blurred[(y-1)*w+x] - blurred[(y-1)*w+(x+1)]
+            +blurred[(y+1)*w+(x-1)] + 2*blurred[(y+1)*w+x] + blurred[(y+1)*w+(x+1)];
+          const mag = Math.sqrt(gx*gx + gy*gy);
+          edges[y*w+x] = mag;
+          if (mag > maxEdge) maxEdge = mag;
+        }
+      }
+
+      // Threshold: keep top ~8% strongest edges
+      const threshold = maxEdge * 0.25;
+
+      // For each of the 4 corner quadrants, find the strong edge pixel
+      // that is CLOSEST to the outer corner of that quadrant.
+      // Quadrants: TL=(0..w/2, 0..h/2), TR=(w/2..w, 0..h/2), etc.
+      const hw = w / 2, hh = h / 2;
+      const quadrants = [
+        { x0: 0,  y0: 0,  x1: hw, y1: hh, cx: 0,   cy: 0   }, // TL
+        { x0: hw, y0: 0,  x1: w,  y1: hh, cx: w-1,  cy: 0   }, // TR
+        { x0: hw, y0: hh, x1: w,  y1: h,  cx: w-1,  cy: h-1 }, // BR
+        { x0: 0,  y0: hh, x1: hw, y1: h,  cx: 0,    cy: h-1 }, // BL
       ];
-      const isFg = (x,y) => { const [r,g,b]=px(x,y); return Math.abs(r-bg[0])+Math.abs(g-bg[1])+Math.abs(b-bg[2]) > 35; };
 
-      // Scan in from each edge
-      let top=0, bottom=h-1, left=0, right=w-1;
-      top_loop:    for(let y=0;y<h;y++)   for(let x=0;x<w;x++)   if(isFg(x,y)){top=y;break top_loop;}
-      bottom_loop: for(let y=h-1;y>=0;y--) for(let x=0;x<w;x++)  if(isFg(x,y)){bottom=y;break bottom_loop;}
-      left_loop:   for(let x=0;x<w;x++)   for(let y=0;y<h;y++)   if(isFg(x,y)){left=x;break left_loop;}
-      right_loop:  for(let x=w-1;x>=0;x--) for(let y=0;y<h;y++)  if(isFg(x,y)){right=x;break right_loop;}
+      // Margin to exclude image border noise (3% of dimension)
+      const mx = Math.round(w * 0.03), my = Math.round(h * 0.03);
 
-      // Refine each corner along the detected edge lines
-      const pad = Math.round(Math.min(w,h)*0.01);
-      top    = Math.max(0, top-pad);
-      bottom = Math.min(h-1, bottom+pad);
-      left   = Math.max(0, left-pad);
-      right  = Math.min(w-1, right+pad);
+      const result = quadrants.map(({ x0, y0, x1, y1, cx, cy }) => {
+        let bestDist = Infinity, bestX = cx, bestY = cy;
+        for (let y = Math.max(y0, my); y < Math.min(y1, h - my); y++) {
+          for (let x = Math.max(x0, mx); x < Math.min(x1, w - mx); x++) {
+            if (edges[y*w+x] >= threshold) {
+              const d = Math.hypot(x - cx, y - cy);
+              if (d < bestDist) { bestDist = d; bestX = x; bestY = y; }
+            }
+          }
+        }
+        // If no strong edge found in quadrant, fall back to 10% inset
+        if (bestDist === Infinity) {
+          bestX = cx === 0 ? Math.round(w * 0.1) : Math.round(w * 0.9);
+          bestY = cy === 0 ? Math.round(h * 0.1) : Math.round(h * 0.9);
+        }
+        const s = 1 / scale;
+        return { x: Math.round(bestX * s), y: Math.round(bestY * s) };
+      });
 
-      // Scale back to image pixels
-      const s = 1/scale;
-      resolve([
-        { x: Math.round(left*s),  y: Math.round(top*s)    }, // TL
-        { x: Math.round(right*s), y: Math.round(top*s)    }, // TR
-        { x: Math.round(right*s), y: Math.round(bottom*s) }, // BR
-        { x: Math.round(left*s),  y: Math.round(bottom*s) }, // BL
-      ]);
+      resolve(result);
     };
     img.src = imageSrc;
   });
