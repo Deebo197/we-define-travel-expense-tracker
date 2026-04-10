@@ -109,34 +109,27 @@ function detectCorners(imageSrc) {
       // Threshold: keep top ~8% strongest edges
       const threshold = maxEdge * 0.25;
 
-      // For each of the 4 corner quadrants, find the strong edge pixel
-      // that is CLOSEST to the outer corner of that quadrant.
-      // Quadrants: TL=(0..w/2, 0..h/2), TR=(w/2..w, 0..h/2), etc.
+      // For each quadrant, find the strong edge pixel CLOSEST TO THE IMAGE CENTER.
+      // This finds the receipt's own corners rather than background/border noise.
       const hw = w / 2, hh = h / 2;
+      const icx = w / 2, icy = h / 2; // image center — target for all quadrants
       const quadrants = [
-        { x0: 0,  y0: 0,  x1: hw, y1: hh, cx: 0,   cy: 0   }, // TL
-        { x0: hw, y0: 0,  x1: w,  y1: hh, cx: w-1,  cy: 0   }, // TR
-        { x0: hw, y0: hh, x1: w,  y1: h,  cx: w-1,  cy: h-1 }, // BR
-        { x0: 0,  y0: hh, x1: hw, y1: h,  cx: 0,    cy: h-1 }, // BL
+        { x0: 0,  y0: 0,  x1: hw, y1: hh, fx: Math.round(w*0.1), fy: Math.round(h*0.1) }, // TL fallback
+        { x0: hw, y0: 0,  x1: w,  y1: hh, fx: Math.round(w*0.9), fy: Math.round(h*0.1) }, // TR fallback
+        { x0: hw, y0: hh, x1: w,  y1: h,  fx: Math.round(w*0.9), fy: Math.round(h*0.9) }, // BR fallback
+        { x0: 0,  y0: hh, x1: hw, y1: h,  fx: Math.round(w*0.1), fy: Math.round(h*0.9) }, // BL fallback
       ];
 
-      // Margin to exclude image border noise (3% of dimension)
-      const mx = Math.round(w * 0.03), my = Math.round(h * 0.03);
-
-      const result = quadrants.map(({ x0, y0, x1, y1, cx, cy }) => {
-        let bestDist = Infinity, bestX = cx, bestY = cy;
+      const result = quadrants.map(({ x0, y0, x1, y1, fx, fy }) => {
+        let bestDist = Infinity, bestX = fx, bestY = fy;
         for (let y = Math.max(y0, my); y < Math.min(y1, h - my); y++) {
           for (let x = Math.max(x0, mx); x < Math.min(x1, w - mx); x++) {
             if (edges[y*w+x] >= threshold) {
-              const d = Math.hypot(x - cx, y - cy);
+              // Distance to image center — smaller = closer to receipt corner
+              const d = Math.hypot(x - icx, y - icy);
               if (d < bestDist) { bestDist = d; bestX = x; bestY = y; }
             }
           }
-        }
-        // If no strong edge found in quadrant, fall back to 10% inset
-        if (bestDist === Infinity) {
-          bestX = cx === 0 ? Math.round(w * 0.1) : Math.round(w * 0.9);
-          bestY = cy === 0 ? Math.round(h * 0.1) : Math.round(h * 0.9);
         }
         const s = 1 / scale;
         return { x: Math.round(bestX * s), y: Math.round(bestY * s) };
