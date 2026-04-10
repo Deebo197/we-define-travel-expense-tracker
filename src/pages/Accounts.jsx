@@ -15,6 +15,7 @@ export default function Accounts() {
   const fileInputRef = useRef(null);
   const [accountSource, setAccountSource] = useState("Barclays");
   const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState(null);
   const [tab, setTab] = useState("pending");
   const [rowState, setRowState] = useState({});
 
@@ -36,6 +37,7 @@ export default function Accounts() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
+    setImportMessage(null);
 
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
@@ -58,6 +60,20 @@ export default function Accounts() {
         },
       },
     });
+
+    if (result.status !== "success") {
+      setImportMessage({ type: "error", text: `Import failed: ${result.details || "Unknown error"}` });
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    if (!result.output?.transactions?.length) {
+      setImportMessage({ type: "error", text: "No transactions found in the file. Please check the CSV format." });
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
 
     if (result.status === "success" && result.output?.transactions) {
       const txns = result.output.transactions;
@@ -102,6 +118,7 @@ export default function Accounts() {
 
       queryClient.invalidateQueries({ queryKey: ["bankTransactions"] });
       queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
+      setImportMessage({ type: "success", text: `Successfully imported ${txns.length} transaction(s).` });
     }
 
     setImporting(false);
@@ -180,11 +197,19 @@ export default function Accounts() {
           <div>
             <Button onClick={() => fileInputRef.current?.click()} disabled={importing} variant="outline" className="gap-1.5">
               {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Import CSV
+              {importing ? "Processing..." : "Import CSV"}
             </Button>
-            <input ref={fileInputRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleCSVImport} />
+            <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleCSVImport} />
           </div>
         </div>
+        {importMessage && (
+          <div className={`mt-3 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 ${
+            importMessage.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-green-50 text-green-700 border border-green-200"
+          }`}>
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {importMessage.text}
+          </div>
+        )}
       </div>
 
       {/* Summary */}
