@@ -74,6 +74,8 @@ export const CLIENT_CATEGORIES = [
   "Client Expenses - Miscellaneous",
 ];
 
+export const ALL_CATEGORIES = [...WDT_CATEGORIES, ...CLIENT_CATEGORIES];
+
 export function getCategoriesForClient(clientCode) {
   if (clientCode === "WD" || clientCode === "WD1") return WDT_CATEGORIES;
   return CLIENT_CATEGORIES;

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Download, FileText, AlertCircle } from "lucide-react";
-import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient } from "@/lib/constants";
+import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient, ALL_CATEGORIES } from "@/lib/constants";
 import AccountantExport from "../components/AccountantExport";
 
 export default function Accounts() {
@@ -369,16 +369,21 @@ ${csvText}`,
                     <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (
                         <div className="flex items-center gap-1">
-                          <Select value={getRowState(txn).client_code} onValueChange={v => {
-                            updateRowState(txn.id, "client_code", v);
-                            // Reset allocations when primary client changes
-                            setRowAllocations(prev => { const n = {...prev}; delete n[txn.id]; return n; });
-                          }}>
-                            <SelectTrigger className="w-20 h-6 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          {rowAllocations[txn.id]?.length > 1 ? (
+                            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              {rowAllocations[txn.id].map(a => a.client_code).join("+")}
+                            </span>
+                          ) : (
+                            <Select value={getRowState(txn).client_code} onValueChange={v => {
+                              updateRowState(txn.id, "client_code", v);
+                              setRowAllocations(prev => { const n = {...prev}; delete n[txn.id]; return n; });
+                            }}>
+                              <SelectTrigger className="w-20 h-6 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
@@ -478,6 +483,21 @@ ${csvText}`,
               onChange={allocs => setRowAllocations(prev => ({ ...prev, [splitDialogTxn.id]: allocs }))}
               paidAmount={splitDialogTxn.amount}
             />
+            <div className="mt-4 border-t border-border pt-4">
+              <Label className="text-sm font-medium mb-1.5 block">Category</Label>
+              <Select
+                value={getRowState(splitDialogTxn).category}
+                onValueChange={v => updateRowState(splitDialogTxn.id, "category", v)}
+              >
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__wdt_header" disabled className="text-xs font-semibold text-muted-foreground">— WDT Categories —</SelectItem>
+                  {ALL_CATEGORIES.filter(c => c.startsWith("WDT")).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__client_header" disabled className="text-xs font-semibold text-muted-foreground">— Client Categories —</SelectItem>
+                  {ALL_CATEGORIES.filter(c => !c.startsWith("WDT")).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex justify-end mt-4">
               <Button onClick={() => setSplitDialogTxn(null)}>Done</Button>
             </div>
