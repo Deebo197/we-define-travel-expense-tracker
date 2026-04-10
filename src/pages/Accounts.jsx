@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Download, FileText, AlertCircle } from "lucide-react";
-import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient, ALL_CATEGORIES } from "@/lib/constants";
+import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient, ALL_CATEGORIES, CLIENT_CATEGORIES } from "@/lib/constants";
 import AccountantExport from "../components/AccountantExport";
 
 export default function Accounts() {
