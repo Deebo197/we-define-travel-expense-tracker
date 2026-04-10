@@ -134,35 +134,17 @@ export default function MileageLog() {
     setCalculating(false);
   };
 
-  const generateRouteImage = async (stops) => {
-    try {
-      const postcodes = stops.map(s => s.postcode).filter(Boolean);
-      if (postcodes.length < 2) return null;
-      const coords = [];
-      for (const pc of postcodes) {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pc + ', UK')}&format=json&limit=1`, { headers: { 'Accept-Language': 'en' } });
-        const data = await res.json();
-        if (data[0]) coords.push({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
-      }
-      if (coords.length < 2) return null;
-      const markers = coords.map(c => `${c.lat},${c.lon},ol-marker-blue`).join('|');
-      const path = coords.map(c => `${c.lat},${c.lon}`).join('|');
-      const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?size=600x400&maptype=mapnik&markers=${markers}&path=color:0x0000ff|weight:3|${path}&zoom=10`;
-      const imgRes = await fetch(mapUrl);
-      if (!imgRes.ok) return null;
-      const blob = await imgRes.blob();
-      const file = new File([blob], 'route_map.png', { type: 'image/png' });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      return file_url;
-    } catch {
-      return null;
-    }
+  const generateRouteUrl = (stops) => {
+    const postcodes = stops.map(s => s.postcode).filter(Boolean);
+    if (postcodes.length < 2) return null;
+    const encoded = postcodes.map(p => encodeURIComponent(p + ' UK')).join('/');
+    return `https://www.google.com/maps/dir/${encoded}`;
   };
 
   const handleSave = async () => {
     setSaving(true);
     const primaryClient = form.client_allocations[0]?.client_code;
-    const routeImageUrl = await generateRouteImage(form.stops);
+    const routeImageUrl = generateRouteUrl(form.stops);
     const receiptCode = await generateReceiptCode(primaryClient, form.date);
     const routeImageCode = routeImageUrl ? `ROUTE-${receiptCode}` : '';
     const month = formatMonth(form.date);
@@ -271,8 +253,8 @@ export default function MileageLog() {
                 </td>
                 <td className="p-3">
                   {j.route_image_url ? (
-                    <a href={j.route_image_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs hover:underline font-mono">
-                      {j.route_image_code || 'View Map'}
+                    <a href={j.route_image_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs hover:underline">
+                      {j.route_image_code || 'View Route'}
                     </a>
                   ) : <span className="text-xs text-muted-foreground">—</span>}
                 </td>
