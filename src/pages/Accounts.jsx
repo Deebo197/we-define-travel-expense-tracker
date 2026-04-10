@@ -41,9 +41,16 @@ export default function Accounts() {
 
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-    const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
-      file_url,
-      json_schema: {
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `Parse this bank transaction CSV file and extract all transactions. The file may have columns named: Number, Date, Account, Amount, Subcategory, Memo (or similar variations). Map them as follows:
+- date: from the Date column, convert to YYYY-MM-DD format (input may be DD/MM/YYYY)
+- description: from the Memo or Description column, trim whitespace and tab characters
+- amount: from the Amount column as a number (may be negative for debits — use the absolute value)
+Return ALL rows as transactions, including debits and credits. Do not skip any rows.
+
+File URL: ${file_url}`,
+      file_urls: [file_url],
+      response_json_schema: {
         type: "object",
         properties: {
           transactions: {
@@ -51,9 +58,9 @@ export default function Accounts() {
             items: {
               type: "object",
               properties: {
-                date: { type: "string", description: "Transaction date in YYYY-MM-DD format" },
+                date: { type: "string", description: "Date in YYYY-MM-DD format" },
                 description: { type: "string" },
-                amount: { type: "number", description: "Amount in GBP, positive number" },
+                amount: { type: "number", description: "Absolute amount in GBP" },
               },
             },
           },
@@ -61,22 +68,17 @@ export default function Accounts() {
       },
     });
 
-    if (result.status !== "success") {
-      setImportMessage({ type: "error", text: `Import failed: ${result.details || "Unknown error"}` });
+    // InvokeLLM returns the parsed JSON object directly
+    const txns = result?.transactions;
+
+    if (!txns?.length) {
+      setImportMessage({ type: "error", text: "No transactions found in the file. Please check the CSV format and column names." });
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    if (!result.output?.transactions?.length) {
-      setImportMessage({ type: "error", text: "No transactions found in the file. Please check the CSV format." });
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    if (result.status === "success" && result.output?.transactions) {
-      const txns = result.output.transactions;
+    if (txns?.length) {
 
       for (const txn of txns) {
         const isWD = /we define|wedefine|wdt/i.test(txn.description);
