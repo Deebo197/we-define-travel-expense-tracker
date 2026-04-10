@@ -16,6 +16,16 @@ export default function Accounts() {
   const [accountSource, setAccountSource] = useState("Barclays");
   const [importing, setImporting] = useState(false);
   const [tab, setTab] = useState("pending");
+  const [rowState, setRowState] = useState({});
+
+  const getRowState = (txn) => rowState[txn.id] || {
+    client_code: "WD",
+    paid_by: "WDA",
+  };
+
+  const updateRowState = (id, field, value) => {
+    setRowState(prev => ({ ...prev, [id]: { ...getRowState({ id }), [field]: value } }));
+  };
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["bankTransactions"],
@@ -97,6 +107,35 @@ export default function Accounts() {
     setImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  const submitAsExpense = useMutation({
+    mutationFn: async (txn) => {
+      const { client_code, paid_by } = getRowState(txn);
+      const clientName = getClientName(client_code);
+      await base44.entities.Expense.create({
+        date: txn.transaction_date,
+        description: txn.description,
+        paid_amount: txn.amount,
+        actual_cost: txn.amount,
+        vat: false,
+        paid_by,
+        client_allocations: [{ client_code, client_name: clientName, percentage: 100, amount: txn.amount }],
+        receipt_code: `${client_code}-TXN`,
+        reimbursement_required: false,
+        reimbursement_paid: false,
+        month: formatMonth(txn.transaction_date),
+        year: new Date(txn.transaction_date).getFullYear(),
+        submitted_by: "system",
+        submitted_by_name: "Bank Import",
+        source: "csv_import",
+      });
+      await base44.entities.BankTransaction.update(txn.id, { status: "expense_submitted" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bankTransactions"] });
+      queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
+    },
+  });
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }) => {
@@ -206,7 +245,22 @@ export default function Accounts() {
                     </td>
                     <td className="p-3 text-right">
                       {txn.status === "pending" && (
-                        <div className="flex gap-1 justify-end">
+                        <div className="flex gap-2 justify-end items-center flex-wrap">
+                          <Select value={getRowState(txn).client_code} onValueChange={v => updateRowState(txn.id, "client_code", v)}>
+                            <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {CLIENT_CODES.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Select value={getRowState(txn).paid_by} onValueChange={v => updateRowState(txn.id, "paid_by", v)}>
+                            <SelectTrigger className="w-20 h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" className="text-xs h-7" onClick={() => submitAsExpense.mutate(txn)} disabled={submitAsExpense.isPending}>
+                            Submit
+                          </Button>
                           <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => updateStatus.mutate({ id: txn.id, status: "ignored" })}>
                             Ignore
                           </Button>
