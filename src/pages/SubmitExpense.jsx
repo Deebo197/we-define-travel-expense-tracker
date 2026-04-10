@@ -174,7 +174,7 @@ export default function SubmitExpense() {
           <Textarea
             value={form.description}
             onChange={(e) => updateField("description", e.target.value)}
-            placeholder="e.g. Lunch with Virgin Holidays — Antoinette visit"
+            placeholder="e.g. add details of the reason for the expense"
             className="mt-1.5"
             rows={3}
             required
