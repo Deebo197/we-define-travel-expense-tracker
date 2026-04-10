@@ -96,28 +96,6 @@ export default function AccountantExport() {
 
 
       pdf.save(`WDT-Full-Accountant-Report-${dateFrom || "all"}-to-${dateTo || "all"}.pdf`);
-
-      // Add clickable links via textWithLink after image
-      let pageNum = 1;
-      let rowY = 56;
-      Object.entries(groupedByClient).forEach(([clientCode, months]) => {
-        rowY += 8;
-        Object.entries(months).forEach(([month, items]) => {
-          rowY += 6;
-          items.forEach((item) => {
-            if (item.receipt_file) {
-              pdf.textWithLink(item.receipt_code, 130, rowY, { pageNumber: 0, y: rowY });
-            }
-            rowY += 6;
-            if (rowY > 270) {
-              pdf.addPage();
-              rowY = 10;
-              pageNum += 1;
-            }
-          });
-          rowY += 5;
-        });
-      });
     } catch (error) {
       console.error("PDF export failed:", error);
       alert("Failed to generate PDF. Please try again.");
