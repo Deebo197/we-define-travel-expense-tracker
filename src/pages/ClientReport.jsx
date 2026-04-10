@@ -149,10 +149,10 @@ export default function ClientReport() {
                   className="h-16 w-auto object-contain mb-3"
                   crossOrigin="anonymous"
                 />
-                <div className="text-xs text-gray-500 leading-relaxed">
-                  {COMPANY_INFO.address}<br />
-                  {COMPANY_INFO.email}<br />
-                  {COMPANY_INFO.website}
+                <div className="text-xs text-gray-500 leading-tight space-y-0.5">
+                  <div>{COMPANY_INFO.address}</div>
+                  <div>{COMPANY_INFO.email}</div>
+                  <div>{COMPANY_INFO.website}</div>
                 </div>
               </div>
               <div className="text-right">
@@ -180,31 +180,36 @@ export default function ClientReport() {
                   <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
                 </div>
                 {/* Column headers */}
-                <div className="grid grid-cols-[90px_1fr_100px_80px] px-3 py-1.5 text-xs font-semibold text-gray-500 border-b border-gray-200 bg-gray-50">
+                <div className="grid grid-cols-[90px_1fr_100px_100px_80px] px-3 py-1.5 text-xs font-semibold text-gray-500 border-b border-gray-200 bg-gray-50">
                   <span>Date</span>
                   <span>Description</span>
                   <span>Receipt</span>
-                  <span className="text-right">Amount</span>
+                  <span className="text-right">Total Amount</span>
+                  <span className="text-right">Split Amount</span>
                 </div>
                 {/* Rows */}
                 {items.map((item, i) => (
-                  <div key={item.id} className={`grid grid-cols-[90px_1fr_100px_80px] px-3 py-2 text-sm border-b border-gray-100 ${i % 2 === 1 ? "bg-[#F5F5F5]" : ""}`}>
+                  <div key={item.id} className={`grid grid-cols-[90px_1fr_100px_100px_80px] px-3 py-2 text-sm border-b border-gray-100 ${i % 2 === 1 ? "bg-[#F5F5F5]" : ""}`}>
                     <span>{formatDateUK(item.date)}</span>
                     <span className="pr-2">{item.description}</span>
                     <span>
-                      {item.receipt_file ? (
+                      {item.type === "mileage" && item.route_image_url ? (
+                        <a href={item.route_image_url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs" title="View route map">{item.route_image_code || "Map"}</a>
+                      ) : item.receipt_file ? (
                         <a href={item.receipt_file} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs">{item.receipt_code}</a>
                       ) : (
                         <span className="text-gray-400 font-mono text-xs">{item.receipt_code}</span>
                       )}
                     </span>
+                    <span className="text-right font-medium">{formatCurrency(item.paid_amount)}</span>
                     <span className="text-right font-medium">{formatCurrency(item.clientAmount)}</span>
                   </div>
                 ))}
                 {/* Month subtotal */}
-                <div className="flex justify-between px-3 py-2 bg-[#C8102E] text-white text-sm font-bold rounded-b">
-                  <span>{month.toUpperCase()} TOTAL</span>
-                  <span>{formatCurrency(items.reduce((s, e) => s + (e.clientAmount || 0), 0))}</span>
+                <div className="grid grid-cols-[90px_1fr_100px_100px_80px] px-3 py-2 bg-[#C8102E] text-white text-sm font-bold rounded-b">
+                 <span className="col-span-3 text-right pr-3">{month.toUpperCase()} TOTAL</span>
+                 <span className="text-right">{formatCurrency(items.reduce((s, e) => s + (e.paid_amount || 0), 0))}</span>
+                 <span className="text-right">{formatCurrency(items.reduce((s, e) => s + (e.clientAmount || 0), 0))}</span>
                 </div>
               </div>
             ))}
