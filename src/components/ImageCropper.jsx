@@ -106,57 +106,48 @@ function detectCorners(imageSrc) {
         }
       }
 
-      // ---- Luminance-based receipt detection ----
-      // Receipts are bright (white/light) on darker backgrounds.
-      // Build a luminance map and find the bright bounding region per quadrant.
+      // ---- Luminance-based receipt corner detection ----
+      // Find all bright+edge pixels, then pick the 4 rotated-rectangle corners
+      // using diagonal extremes: min/max of (x+y) and (x-y).
+      // This correctly handles tilted/skewed receipts of any shape.
 
-      // Compute median luminance to set a dynamic threshold
       const lums = Array.from(gray).sort((a, b) => a - b);
       const medianLum = lums[Math.floor(lums.length * 0.5)];
-      // Bright pixels = significantly above median (receipt paper)
-      const lumThreshold = Math.min(medianLum + 40, 200);
+      const lumThreshold = Math.min(medianLum + 30, 210);
+      const edgeThreshold = maxEdge * 0.18;
 
       // Border margin to ignore camera vignetting / edge noise
       const mx = Math.round(w * 0.04), my = Math.round(h * 0.04);
 
-      // For each quadrant, find the strong-edge pixel that is also bright
-      // and closest to the OUTER corner of that quadrant.
-      const threshold = maxEdge * 0.2;
-      const hw = w / 2, hh = h / 2;
-      const quadrants = [
-        { x0: mx,   y0: my,   x1: hw,    y1: hh,    cx: 0,   cy: 0,   fx: Math.round(w*0.15), fy: Math.round(h*0.15) },
-        { x0: hw,   y0: my,   x1: w-mx,  y1: hh,    cx: w-1, cy: 0,   fx: Math.round(w*0.85), fy: Math.round(h*0.15) },
-        { x0: hw,   y0: hh,   x1: w-mx,  y1: h-my,  cx: w-1, cy: h-1, fx: Math.round(w*0.85), fy: Math.round(h*0.85) },
-        { x0: mx,   y0: hh,   x1: hw,    y1: h-my,  cx: 0,   cy: h-1, fx: Math.round(w*0.15), fy: Math.round(h*0.85) },
+      // Collect candidate pixels: bright AND strong edge, away from image border
+      let tlBest = null, trBest = null, brBest = null, blBest = null;
+      let tlScore = Infinity, trScore = Infinity, brScore = -Infinity, blScore = -Infinity;
+
+      for (let y = my; y < h - my; y++) {
+        for (let x = mx; x < w - mx; x++) {
+          if (edges[y*w+x] < edgeThreshold) continue;
+          if (gray[y*w+x] < lumThreshold) continue;
+          // TL corner: minimise x+y
+          if (x + y < tlScore) { tlScore = x + y; tlBest = {x, y}; }
+          // BR corner: maximise x+y
+          if (x + y > brScore) { brScore = x + y; brBest = {x, y}; }
+          // TR corner: maximise x-y
+          if (x - y > trScore) { trScore = x - y; trBest = {x, y}; }
+          // BL corner: minimise x-y
+          if (x - y < blScore) { blScore = x - y; blBest = {x, y}; }
+        }
+      }
+
+      // Fallback: if no candidates found, use 15% insets
+      const fallback = [
+        tlBest || { x: Math.round(w*0.15), y: Math.round(h*0.15) },
+        trBest || { x: Math.round(w*0.85), y: Math.round(h*0.15) },
+        brBest || { x: Math.round(w*0.85), y: Math.round(h*0.85) },
+        blBest || { x: Math.round(w*0.15), y: Math.round(h*0.85) },
       ];
 
-      const result = quadrants.map(({ x0, y0, x1, y1, cx, cy, fx, fy }) => {
-        let bestDist = Infinity, bestX = fx, bestY = fy;
-        for (let y = y0; y < y1; y++) {
-          for (let x = x0; x < x1; x++) {
-            // Must be a strong edge AND a bright (receipt-paper) pixel nearby
-            if (edges[y*w+x] >= threshold && gray[y*w+x] >= lumThreshold) {
-              const d = Math.hypot(x - cx, y - cy);
-              if (d < bestDist) { bestDist = d; bestX = x; bestY = y; }
-            }
-          }
-        }
-        // Fallback: just find the outermost bright pixel in this quadrant
-        if (bestDist === Infinity) {
-          for (let y = y0; y < y1; y++) {
-            for (let x = x0; x < x1; x++) {
-              if (gray[y*w+x] >= lumThreshold) {
-                const d = Math.hypot(x - cx, y - cy);
-                if (d < bestDist) { bestDist = d; bestX = x; bestY = y; }
-              }
-            }
-          }
-        }
-        const s = 1 / scale;
-        return { x: Math.round(bestX * s), y: Math.round(bestY * s) };
-      });
-
-      resolve(result);
+      const s = 1 / scale;
+      resolve(fallback.map(p => ({ x: Math.round(p.x * s), y: Math.round(p.y * s) })));
     };
     img.src = imageSrc;
   });
