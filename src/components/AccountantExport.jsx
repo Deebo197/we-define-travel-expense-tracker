@@ -92,6 +92,30 @@ export default function AccountantExport() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+      // Add interactive links for receipt codes
+      const scale = pdfWidth / el.offsetWidth;
+      Object.entries(groupedByClient).forEach(([clientCode, months]) => {
+        Object.entries(months).forEach(([month, items]) => {
+          items.forEach((item) => {
+            if (item.receipt_file) {
+              const receiptLink = el.querySelector(`a[href="${item.receipt_file}"]`);
+              if (receiptLink) {
+                const rect = receiptLink.getBoundingClientRect();
+                const parentRect = el.getBoundingClientRect();
+                const relativeRect = {
+                  x: (rect.left - parentRect.left) * scale,
+                  y: (rect.top - parentRect.top) * scale,
+                  width: rect.width * scale,
+                  height: rect.height * scale,
+                };
+                pdf.textWithLink(item.receipt_code, relativeRect.x, relativeRect.y + relativeRect.height * 0.7, { url: item.receipt_file });
+              }
+            }
+          });
+        });
+      });
+
       pdf.save(`WDT-Full-Accountant-Report-${dateFrom || "all"}-to-${dateTo || "all"}.pdf`);
     } catch (error) {
       console.error("PDF export failed:", error);
