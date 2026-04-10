@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
-import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatDateUK, getClientName, getPaidByLabel } from "@/lib/constants";
+import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
 
 export default function AllExpenses() {
   const queryClient = useQueryClient();
@@ -19,6 +21,9 @@ export default function AllExpenses() {
   const [filters, setFilters] = useState({ client: "all", month: "all", paidBy: "all", reimbReq: "all", reimbPaid: "all" });
   const [selected, setSelected] = useState(null);
   const [checked, setChecked] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [editExpense, setEditExpense] = useState(null); // expense being edited
+  const [editForm, setEditForm] = useState({});
 
   const markPaid = useMutation({
     mutationFn: async (ids) => {
@@ -31,6 +36,44 @@ export default function AllExpenses() {
       setChecked([]);
     },
   });
+
+  const deleteExpenses = useMutation({
+    mutationFn: async (ids) => {
+      for (const id of ids) {
+        await base44.entities.Expense.delete(id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
+      setSelectedIds([]);
+    },
+  });
+
+  const saveEdit = useMutation({
+    mutationFn: async ({ id, data }) => {
+      await base44.entities.Expense.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
+      setEditExpense(null);
+    },
+  });
+
+  const toggleSelectId = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const openEdit = (exp) => {
+    setEditExpense(exp);
+    setEditForm({
+      date: exp.date,
+      description: exp.description,
+      paid_amount: exp.paid_amount,
+      actual_cost: exp.actual_cost,
+      category: exp.category || "",
+      paid_by: exp.paid_by,
+    });
+  };
 
   const months = [...new Set(expenses.map(e => e.month))].filter(Boolean);
 
@@ -55,12 +98,26 @@ export default function AllExpenses() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">All Expenses</h1>
+        <div className="flex gap-2">
+        {selectedIds.length > 0 && (
+          <>
+            {selectedIds.length === 1 && (
+              <Button size="sm" variant="outline" onClick={() => openEdit(expenses.find(e => e.id === selectedIds[0]))}>
+                <Pencil className="h-4 w-4 mr-1" /> Edit
+              </Button>
+            )}
+            <Button size="sm" variant="destructive" onClick={() => { if (confirm(`Delete ${selectedIds.length} expense(s)?`)) deleteExpenses.mutate(selectedIds); }} disabled={deleteExpenses.isPending}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete {selectedIds.length}
+            </Button>
+          </>
+        )}
         {checked.length > 0 && (
           <Button size="sm" onClick={() => markPaid.mutate(checked)} disabled={markPaid.isPending}>
             <CheckCircle2 className="h-4 w-4 mr-1" />
             Mark {checked.length} as Paid
           </Button>
         )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -109,7 +166,8 @@ export default function AllExpenses() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <th className="p-3 w-10"></th>
+            <th className="p-3 w-10"><Checkbox checked={selectedIds.length === filtered.length && filtered.length > 0} onCheckedChange={v => setSelectedIds(v ? filtered.map(e => e.id) : [])} /></th>
+            <th className="p-3 w-10"></th>
               <th className="p-3 text-left">Date</th>
               <th className="p-3 text-left">Submitted By</th>
               <th className="p-3 text-left">Client(s)</th>
@@ -124,8 +182,11 @@ export default function AllExpenses() {
           </thead>
           <tbody>
             {filtered.map(exp => (
-              <tr key={exp.id} className="border-t border-border hover:bg-muted/20 transition-colors">
-                <td className="p-3">
+            <tr key={exp.id} className={`border-t border-border hover:bg-muted/20 transition-colors ${selectedIds.includes(exp.id) ? "bg-primary/5" : ""}`}>
+              <td className="p-3">
+                <Checkbox checked={selectedIds.includes(exp.id)} onCheckedChange={() => toggleSelectId(exp.id)} />
+              </td>
+              <td className="p-3">
                   {exp.reimbursement_required && !exp.reimbursement_paid && (
                     <Checkbox
                       checked={checked.includes(exp.id)}
@@ -199,6 +260,63 @@ export default function AllExpenses() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editExpense} onOpenChange={() => setEditExpense(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Expense</DialogTitle>
+          </DialogHeader>
+          {editExpense && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm">Date</Label>
+                <Input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm">Description</Label>
+                <Input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="mt-1" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">Paid Amount £</Label>
+                  <Input type="number" step="0.01" value={editForm.paid_amount} onChange={e => setEditForm(f => ({ ...f, paid_amount: parseFloat(e.target.value) }))} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-sm">Actual Cost £</Label>
+                  <Input type="number" step="0.01" value={editForm.actual_cost} onChange={e => setEditForm(f => ({ ...f, actual_cost: parseFloat(e.target.value) }))} className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm">Paid By</Label>
+                <Select value={editForm.paid_by} onValueChange={v => setEditForm(f => ({ ...f, paid_by: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code} — {p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm">Category</Label>
+                <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {getCategoriesForClient(editExpense.client_allocations?.[0]?.client_code).map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setEditExpense(null)}>Cancel</Button>
+            <Button onClick={() => saveEdit.mutate({ id: editExpense.id, data: editForm })} disabled={saveEdit.isPending}>
+              {saveEdit.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
