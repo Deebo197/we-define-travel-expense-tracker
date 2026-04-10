@@ -149,8 +149,10 @@ export default function ClientReport() {
                   className="h-16 w-auto object-contain mb-3"
                   crossOrigin="anonymous"
                 />
-                <div className="text-xs text-gray-500 leading-tight space-y-0.5">
-                  <div>{COMPANY_INFO.address}</div>
+                <div className="text-xs text-gray-500">
+                  {COMPANY_INFO.address.split(", ").map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
                   <div>{COMPANY_INFO.email}</div>
                   <div>{COMPANY_INFO.website}</div>
                 </div>
