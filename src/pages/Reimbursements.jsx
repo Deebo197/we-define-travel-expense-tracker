@@ -103,9 +103,9 @@ export default function Reimbursements() {
       {/* Search / filter section */}
       <div className="bg-card rounded-xl border border-border p-4 mb-6 space-y-4">
         <div>
-          <Label className="text-sm font-medium mb-2 block">Filter by Paid By</Label>
+          <Label className="text-sm font-medium mb-2 block">Filter by Person</Label>
           <div className="flex flex-wrap gap-2">
-            {PAID_BY_CODES.map(p => (
+            {[{ code: "CB", label: "Céline" }, { code: "ST", label: "Sophie" }, { code: "DJ", label: "Dee" }].map(p => (
               <button
                 key={p.code}
                 onClick={() => toggleCode(p.code)}
