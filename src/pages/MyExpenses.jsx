@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
+import CategoryBadge from "../components/CategoryBadge";
 import { CLIENT_CODES, formatCurrency, formatDateUK, getClientName } from "@/lib/constants";
 
 export default function MyExpenses() {
@@ -107,20 +108,26 @@ export default function MyExpenses() {
             <DialogTitle>Expense Detail</DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-muted-foreground">Date:</span><br />{formatDateUK(selected.date)}</div>
-                <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary font-medium">{selected.receipt_code}</span></div>
-                <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
-                <div><span className="text-muted-foreground">Paid By:</span><br />{selected.paid_by}</div>
-              </div>
-              <div className="text-sm">
-                <span className="text-muted-foreground">Description:</span>
-                <p className="mt-1">{selected.description}</p>
-              </div>
+          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+           <div><span className="text-muted-foreground">Date:</span><br />{formatDateUK(selected.date)}</div>
+           <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary font-medium">{selected.receipt_code}</span></div>
+           <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
+           <div><span className="text-muted-foreground">Paid By:</span><br />{selected.paid_by}</div>
+          </div>
+          <div className="text-sm">
+           <span className="text-muted-foreground">Description:</span>
+           <p className="mt-1">{selected.description}</p>
+          </div>
+          {selected.category && (
+           <div className="text-sm">
+             <span className="text-muted-foreground">Category:</span>
+             <div className="mt-2"><CategoryBadge category={selected.category} showLabel={true} /></div>
+           </div>
+          )}
               <div className="text-sm">
                 <span className="text-muted-foreground">Client(s):</span>
-                <div className="mt-1 space-y-1">
+                <div className="mt-2 space-y-1">
                   {selected.client_allocations?.map((a, i) => (
                     <div key={i} className="flex justify-between">
                       <span>{a.client_code} — {getClientName(a.client_code)}</span>

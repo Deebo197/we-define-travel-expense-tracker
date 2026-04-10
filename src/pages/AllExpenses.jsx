@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
+import CategoryBadge from "../components/CategoryBadge";
 import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
 
 export default function AllExpenses() {
@@ -204,7 +205,7 @@ export default function AllExpenses() {
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.submitted_by_name || exp.submitted_by}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.client_allocations?.map(a => a.client_code).join(", ")}</td>
                 <td className="p-3 max-w-xs truncate cursor-pointer" onClick={() => setSelected(exp)}>{getDisplayDescription(exp.description)}</td>
-                <td className="p-3 text-xs text-muted-foreground cursor-pointer max-w-[140px] truncate" onClick={() => setSelected(exp)}>{exp.category}</td>
+                <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.category && <CategoryBadge category={exp.category} showLabel={false} />}</td>
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>{exp.paid_by}</td>
                 <td className="p-3 text-right font-semibold whitespace-nowrap">{formatCurrency(exp.paid_amount)}</td>
                 <td className="p-3 text-center">{exp.vat ? "Y" : "N"}</td>
@@ -236,17 +237,17 @@ export default function AllExpenses() {
             <DialogTitle>Expense Detail</DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Date:</span><br />{formatDateUK(selected.date)}</div>
-                <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary">{selected.receipt_code}</span></div>
-                <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
-                <div><span className="text-muted-foreground">Actual Cost:</span><br />{formatCurrency(selected.actual_cost)}</div>
-                <div><span className="text-muted-foreground">Paid By:</span><br />{getPaidByLabel(selected.paid_by)}</div>
-                <div><span className="text-muted-foreground">Submitted By:</span><br />{selected.submitted_by_name}</div>
-              </div>
-              <div><span className="text-muted-foreground">Description:</span><p className="mt-1">{selected.description}</p></div>
-              {selected.category && <div><span className="text-muted-foreground">Category:</span><p className="mt-1 font-medium">{selected.category}</p></div>}
+          <div className="space-y-4 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+           <div><span className="text-muted-foreground">Date:</span><br />{formatDateUK(selected.date)}</div>
+           <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary">{selected.receipt_code}</span></div>
+           <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
+           <div><span className="text-muted-foreground">Actual Cost:</span><br />{formatCurrency(selected.actual_cost)}</div>
+           <div><span className="text-muted-foreground">Paid By:</span><br />{getPaidByLabel(selected.paid_by)}</div>
+           <div><span className="text-muted-foreground">Submitted By:</span><br />{selected.submitted_by_name}</div>
+          </div>
+          <div><span className="text-muted-foreground">Description:</span><p className="mt-1">{selected.description}</p></div>
+          {selected.category && <div><span className="text-muted-foreground">Category:</span><div className="mt-2"><CategoryBadge category={selected.category} showLabel={true} /></div></div>}
               <div>
                 <span className="text-muted-foreground">Client(s):</span>
                 <div className="mt-1 space-y-1">
