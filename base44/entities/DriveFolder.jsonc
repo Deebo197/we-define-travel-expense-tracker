@@ -1,0 +1,22 @@
+{
+  "name": "DriveFolder",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Folder Name"
+    },
+    "folder_id": {
+      "type": "string",
+      "title": "Google Drive Folder ID"
+    },
+    "parent_folder_id": {
+      "type": "string",
+      "title": "Parent Folder ID"
+    }
+  },
+  "required": [
+    "name",
+    "folder_id"
+  ]
+}
