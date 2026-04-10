@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
+import CategorySelectItem from "../components/CategorySelectItem";
 import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
 
 export default function AllExpenses() {
@@ -306,15 +307,15 @@ export default function AllExpenses() {
                 </Select>
               </div>
               <div>
-                <Label className="text-sm">Category</Label>
-                <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {getCategoriesForClient(editExpense.client_allocations?.[0]?.client_code).map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+               <Label className="text-sm">Category</Label>
+               <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
+                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                 <SelectContent>
+                   {getCategoriesForClient(editExpense.client_allocations?.[0]?.client_code).map(c => (
+                     <CategorySelectItem key={c} category={c} />
+                   ))}
+                 </SelectContent>
+               </Select>
               </div>
             </div>
           )}

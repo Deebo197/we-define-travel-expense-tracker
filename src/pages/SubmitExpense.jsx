@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CheckCircle2, Loader2 } from "lucide-react";
 import ReceiptCapture from "../components/ReceiptCapture";
 import ClientSplitInput from "../components/ClientSplitInput";
+import CategorySelectItem from "../components/CategorySelectItem";
 import { PAID_BY_CODES, formatMonth, isReimbursementRequired, formatCurrency, getCategoriesForClient } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
@@ -250,12 +251,12 @@ export default function SubmitExpense() {
             <Label className="text-sm font-medium">Category *</Label>
             <Select value={form.category} onValueChange={v => updateField("category", v)}>
               <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Select category" />
+               <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
+               {categories.map(c => (
+                 <CategorySelectItem key={c} category={c} />
+               ))}
               </SelectContent>
             </Select>
           </div>

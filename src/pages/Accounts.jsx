@@ -3,6 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Paperclip, SplitSquareHorizontal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ClientSplitInput from "../components/ClientSplitInput";
+import CategorySelectItem from "../components/CategorySelectItem";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -416,7 +417,7 @@ ${csvText}`,
                           <Select value={getRowState(txn).category} onValueChange={v => updateRowState(txn.id, "category", v)}>
                             <SelectTrigger className="w-28 h-6 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
                             <SelectContent>
-                              {cats.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                              {cats.map(c => <CategorySelectItem key={c} category={c} />)}
                             </SelectContent>
                           </Select>
                         );
@@ -494,9 +495,9 @@ ${csvText}`,
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__wdt_header" disabled className="text-xs font-semibold text-muted-foreground">— WDT Categories —</SelectItem>
-                  {ALL_CATEGORIES.filter(c => c.startsWith("WDT")).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {ALL_CATEGORIES.filter(c => c.startsWith("WDT")).map(c => <CategorySelectItem key={c} category={c} />)}
                   <SelectItem value="__client_header" disabled className="text-xs font-semibold text-muted-foreground">— Client Categories —</SelectItem>
-                  {ALL_CATEGORIES.filter(c => !c.startsWith("WDT")).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {ALL_CATEGORIES.filter(c => !c.startsWith("WDT")).map(c => <CategorySelectItem key={c} category={c} />)}
                 </SelectContent>
               </Select>
             </div>
