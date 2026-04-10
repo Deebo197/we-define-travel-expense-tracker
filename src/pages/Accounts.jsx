@@ -23,6 +23,12 @@ export default function Accounts() {
   const [descAliases, setDescAliases] = useState(() => {
     try { return JSON.parse(localStorage.getItem("wdt_desc_aliases") || "{}"); } catch { return {}; }
   });
+  // Reverse map: newDesc -> originalDesc
+  const reverseAliases = useMemo(() => {
+    const r = {};
+    Object.entries(descAliases).forEach(([orig, alias]) => { r[alias] = orig; });
+    return r;
+  }, [descAliases]);
   const [editingDesc, setEditingDesc] = useState({}); // { [txnId]: currentEditValue }
 
   const saveDescAlias = async (txn, newDesc) => {
@@ -291,12 +297,19 @@ ${csvText}`,
                           onKeyDown={e => { if (e.key === "Enter") saveDescAlias(txn, editingDesc[txn.id]); if (e.key === "Escape") setEditingDesc(prev => { const n = { ...prev }; delete n[txn.id]; return n; }); }}
                         />
                       ) : (
-                        <span
-                          className="cursor-pointer hover:text-primary truncate block max-w-xs"
-                          title="Click to edit description"
-                          onClick={() => setEditingDesc(prev => ({ ...prev, [txn.id]: txn.description }))}
-                        >{txn.description}</span>
-                      )}
+                        <>
+                          <span
+                            className="cursor-pointer hover:text-primary truncate block max-w-xs"
+                            title="Click to edit description"
+                            onClick={() => setEditingDesc(prev => ({ ...prev, [txn.id]: txn.description }))}
+                          >{txn.description}</span>
+                          {reverseAliases[txn.description] && (
+                            <span className="text-xs text-muted-foreground truncate block max-w-xs" title={reverseAliases[txn.description]}>
+                              was: {reverseAliases[txn.description]}
+                            </span>
+                          )}
+                        </>
+                        )}
                     </td>
                     <td className="p-3 text-right font-semibold">{formatCurrency(txn.amount)}</td>
                     <td className="p-3 text-center">
