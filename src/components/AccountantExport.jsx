@@ -94,25 +94,20 @@ export default function AccountantExport() {
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
       // Add interactive links for receipt codes
-      const scale = pdfWidth / el.offsetWidth;
+      let rowIndex = 0;
       Object.entries(groupedByClient).forEach(([clientCode, months]) => {
+        rowIndex += 3; // Account for client header + month header
         Object.entries(months).forEach(([month, items]) => {
+          rowIndex += 1; // Month header row
           items.forEach((item) => {
             if (item.receipt_file) {
-              const receiptLink = el.querySelector(`a[href="${item.receipt_file}"]`);
-              if (receiptLink) {
-                const rect = receiptLink.getBoundingClientRect();
-                const parentRect = el.getBoundingClientRect();
-                const relativeRect = {
-                  x: (rect.left - parentRect.left) * scale,
-                  y: (rect.top - parentRect.top) * scale,
-                  width: rect.width * scale,
-                  height: rect.height * scale,
-                };
-                pdf.textWithLink(item.receipt_code, relativeRect.x, relativeRect.y + relativeRect.height * 0.7, { url: item.receipt_file });
-              }
+              const yPos = 60 + (rowIndex * 5.5); // Approximate Y position in PDF
+              const xPos = 130; // X position for receipt code column
+              pdf.textWithLink(item.receipt_code, xPos, yPos, { url: item.receipt_file });
             }
+            rowIndex += 1;
           });
+          rowIndex += 1; // Month total row
         });
       });
 
