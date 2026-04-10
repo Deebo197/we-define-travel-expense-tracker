@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, TrendingUp, CreditCard, Receipt } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { formatCurrency, formatDateUK, getClientName, CLIENT_CODES } from "@/lib/constants";
+import { formatCurrency, formatDateUK, getClientName, getPaidByLabel, CLIENT_CODES } from "@/lib/constants";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 
 function getMonthRange(filter) {
@@ -53,12 +53,13 @@ export default function Dashboard() {
   const reimbByPerson = useMemo(() => {
     const map = {};
     pendingReimb.forEach(e => {
-      const name = e.submitted_by_name || e.submitted_by || "Unknown";
-      if (!map[name]) map[name] = { count: 0, total: 0 };
-      map[name].count++;
-      map[name].total += e.paid_amount || 0;
+      const key = e.paid_by || 'Unknown';
+      const name = getPaidByLabel(e.paid_by) || key;
+      if (!map[key]) map[key] = { name, count: 0, total: 0 };
+      map[key].count++;
+      map[key].total += e.paid_amount || 0;
     });
-    return Object.entries(map).map(([name, data]) => ({ name, ...data }));
+    return Object.values(map);
   }, [pendingReimb]);
 
   const recentExpenses = expenses.slice(0, 10);
