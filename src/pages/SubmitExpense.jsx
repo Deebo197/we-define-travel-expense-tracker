@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,11 @@ export default function SubmitExpense() {
 
   // Pre-fill paid_by with user's code
   const userPaidByCode = user?.paid_by_code || "";
-  if (!form.paid_by && userPaidByCode) {
-    setForm(f => ({ ...f, paid_by: userPaidByCode }));
-  }
+  useEffect(() => {
+    if (!form.paid_by && userPaidByCode) {
+      setForm(f => ({ ...f, paid_by: userPaidByCode }));
+    }
+  }, [userPaidByCode]);
 
   const updateField = (field, value) => {
     setForm(f => {

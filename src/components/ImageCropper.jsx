@@ -121,7 +121,7 @@ function detectCorners(imageSrc) {
 
       // Collect candidate pixels: bright AND strong edge, away from image border
       let tlBest = null, trBest = null, brBest = null, blBest = null;
-      let tlScore = Infinity, trScore = Infinity, brScore = -Infinity, blScore = -Infinity;
+      let tlScore = Infinity, trScore = -Infinity, brScore = -Infinity, blScore = Infinity;
 
       for (let y = my; y < h - my; y++) {
         for (let x = mx; x < w - mx; x++) {
