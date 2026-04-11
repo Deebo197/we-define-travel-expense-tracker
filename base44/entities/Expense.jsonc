@@ -110,6 +110,11 @@
         "mileage"
       ],
       "default": "manual"
+    },
+    "drive_sync_failed": {
+      "type": "boolean",
+      "title": "Drive Sync Failed",
+      "default": false
     }
   },
   "required": [
@@ -118,5 +123,40 @@
     "paid_amount",
     "paid_by",
     "client_allocations"
-  ]
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.submitted_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

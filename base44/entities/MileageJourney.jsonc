@@ -99,6 +99,14 @@
       "type": "string",
       "title": "Receipt Code"
     },
+    "receipt_file": {
+      "type": "string",
+      "title": "Receipt File"
+    },
+    "receipt_url": {
+      "type": "string",
+      "title": "Receipt URL"
+    },
     "route_image_url": {
       "type": "string",
       "title": "Route Image URL"
@@ -114,6 +122,11 @@
     "year": {
       "type": "number",
       "title": "Year"
+    },
+    "drive_sync_failed": {
+      "type": "boolean",
+      "title": "Drive Sync Failed",
+      "default": false
     }
   },
   "required": [

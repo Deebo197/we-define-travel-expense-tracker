@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil } from "lucide-react";
+import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil, AlertTriangle } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
 import CategorySelectItem from "../components/CategorySelectItem";
@@ -217,13 +217,20 @@ export default function AllExpenses() {
                   <ReimbursementBadge required={exp.reimbursement_required} paid={exp.reimbursement_paid} />
                 </td>
                 <td className="p-3">
-                  {exp.receipt_file ? (
-                    <a href={exp.receipt_file} target="_blank" rel="noopener noreferrer" className="text-primary font-mono text-xs hover:underline flex items-center gap-1">
-                      {exp.receipt_code} <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    <span className="text-xs text-muted-foreground font-mono">{exp.receipt_code}</span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {exp.receipt_file ? (
+                      <a href={exp.receipt_file} target="_blank" rel="noopener noreferrer" className="text-primary font-mono text-xs hover:underline flex items-center gap-1">
+                        {exp.receipt_code} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground font-mono">{exp.receipt_code}</span>
+                    )}
+                    {exp.drive_sync_failed && (
+                      <span title="Receipt not synced to Google Drive — please re-upload">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

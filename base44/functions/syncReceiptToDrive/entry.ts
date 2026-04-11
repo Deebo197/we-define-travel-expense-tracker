@@ -1,22 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-Deno.serve(async (req) => {
+async function flagSyncFailed(base44, entityType, entityId) {
+  if (!entityId) return;
   try {
-    const base44 = createClientFromRequest(req);
+    if (entityType === 'expense') {
+      await base44.asServiceRole.entities.Expense.update(entityId, { drive_sync_failed: true });
+    } else {
+      await base44.asServiceRole.entities.MileageJourney.update(entityId, { drive_sync_failed: true });
+    }
+  } catch (_) { /* best-effort */ }
+}
+
+Deno.serve(async (req) => {
+  let base44, entityId, entityType;
+  try {
+    base44 = createClientFromRequest(req);
     const payload = await req.json();
 
     // Support both direct calls and entity automation payloads
     const isAutomation = !!payload.event;
     const entityName = isAutomation ? payload.event?.entity_name : payload.entity_type;
-    const entityId = isAutomation ? payload.event?.entity_id : payload.entity_id;
+    entityId = isAutomation ? payload.event?.entity_id : payload.entity_id;
     const data = isAutomation ? payload.data : payload;
+    entityType = entityName === 'Expense' ? 'expense' : 'mileage';
 
     if (!data) return Response.json({ error: 'No data' }, { status: 400 });
 
     const receiptFile = data.receipt_file;
     const receiptCode = data.receipt_code;
     const clientCode = data.client_allocations?.[0]?.client_code;
-    const entityType = entityName === 'Expense' ? 'expense' : 'mileage';
 
     if (!receiptFile || !receiptCode || !clientCode) {
       return Response.json({ skipped: true, reason: 'Missing receipt_file, receipt_code, or client_code' });
@@ -66,7 +78,10 @@ Deno.serve(async (req) => {
 
     // Download the receipt file
     const fileRes = await fetch(receiptFile);
-    if (!fileRes.ok) return Response.json({ error: 'Failed to fetch receipt file' }, { status: 500 });
+    if (!fileRes.ok) {
+      await flagSyncFailed(base44, entityType, entityId);
+      return Response.json({ error: 'Failed to fetch receipt file' }, { status: 500 });
+    }
 
     const fileBlob = await fileRes.blob();
     const contentType = fileBlob.type || 'application/octet-stream';
@@ -106,6 +121,7 @@ Deno.serve(async (req) => {
 
     const uploadData = await uploadRes.json();
     if (!uploadData.id) {
+      await flagSyncFailed(base44, entityType, entityId);
       return Response.json({ error: 'Upload failed', details: uploadData }, { status: 500 });
     }
 
@@ -118,15 +134,16 @@ Deno.serve(async (req) => {
 
     const shareableLink = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
 
-    // Update entity receipt_url
+    // Update entity receipt_url and clear any previous sync failure flag
     if (entityType === 'expense') {
-      await base44.asServiceRole.entities.Expense.update(entityId, { receipt_url: shareableLink });
+      await base44.asServiceRole.entities.Expense.update(entityId, { receipt_url: shareableLink, drive_sync_failed: false });
     } else {
-      await base44.asServiceRole.entities.MileageJourney.update(entityId, { receipt_url: shareableLink });
+      await base44.asServiceRole.entities.MileageJourney.update(entityId, { receipt_url: shareableLink, drive_sync_failed: false });
     }
 
     return Response.json({ success: true, drive_link: shareableLink, file_id: uploadData.id });
   } catch (error) {
+    await flagSyncFailed(base44, entityType, entityId);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

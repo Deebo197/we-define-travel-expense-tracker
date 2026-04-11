@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Loader2, MapPin, Calculator } from "lucide-react";
+import { Plus, Trash2, Loader2, MapPin, Calculator, AlertTriangle } from "lucide-react";
 import ClientSplitInput from "../components/ClientSplitInput";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import PersonAvatar from "../components/PersonAvatar";
@@ -273,11 +273,18 @@ export default function MileageLog() {
                   <ReimbursementBadge required={j.reimbursement_required} paid={j.reimbursement_paid} />
                 </td>
                 <td className="p-3">
-                  {j.route_image_url ? (
-                    <a href={j.route_image_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs hover:underline">
-                      {j.route_image_code || 'View Route'}
-                    </a>
-                  ) : <span className="text-xs text-muted-foreground">—</span>}
+                  <div className="flex items-center gap-1.5">
+                    {j.route_image_url ? (
+                      <a href={j.route_image_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs hover:underline">
+                        {j.route_image_code || 'View Route'}
+                      </a>
+                    ) : <span className="text-xs text-muted-foreground">—</span>}
+                    {j.drive_sync_failed && (
+                      <span title="Receipt not synced to Google Drive — please re-upload">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
