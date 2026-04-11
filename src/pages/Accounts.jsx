@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Download, FileText, AlertCircle } from "lucide-react";
 import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient, ALL_CATEGORIES, CLIENT_CATEGORIES } from "@/lib/constants";
 import AccountantExport from "../components/AccountantExport";
+import DuplicateDetector from "../components/DuplicateDetector";
 
 export default function Accounts() {
   const queryClient = useQueryClient();
@@ -247,9 +248,15 @@ ${csvText}`,
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
 
+  const { data: allExpensesForDupes = [] } = useQuery({
+    queryKey: ["allExpensesForDupes"],
+    queryFn: () => base44.entities.Expense.list("-date", 2000),
+  });
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Accounts</h1>
+      <DuplicateDetector expenses={allExpensesForDupes} />
 
       {/* CSV Import */}
       <div className="bg-card rounded-xl border border-border p-5">
