@@ -12,6 +12,7 @@ import { Plus, Trash2, Loader2, MapPin, Calculator } from "lucide-react";
 import ClientSplitInput from "../components/ClientSplitInput";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import PersonAvatar from "../components/PersonAvatar";
+import CategoryBadge from "../components/CategoryBadge";
 import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient } from "@/lib/constants";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
@@ -244,6 +245,7 @@ export default function MileageLog() {
               <th className="p-3 text-right">Miles</th>
               <th className="p-3 text-right">Cost</th>
               <th className="p-3 text-left">Client(s)</th>
+              <th className="p-3 text-left">Category</th>
               <th className="p-3 text-center">Reimb.</th>
               <th className="p-3 text-left">Route Map</th>
             </tr>
@@ -266,6 +268,7 @@ export default function MileageLog() {
                 <td className="p-3 text-right">{j.total_miles}</td>
                 <td className="p-3 text-right font-semibold">{formatCurrency(j.total_cost)}</td>
                 <td className="p-3">{j.client_allocations?.map(a => a.client_code).join(", ")}</td>
+                <td className="p-3">{j.category ? <CategoryBadge category={j.category} showLabel /> : <span className="text-xs text-muted-foreground">—</span>}</td>
                 <td className="p-3 text-center">
                   <ReimbursementBadge required={j.reimbursement_required} paid={j.reimbursement_paid} />
                 </td>
