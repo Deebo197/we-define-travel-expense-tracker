@@ -87,6 +87,11 @@ export default function Accounts() {
     queryFn: () => base44.entities.BankTransaction.list("-created_date", 1000),
   });
 
+  const { data: allExpensesForDupes = [] } = useQuery({
+    queryKey: ["allExpensesForDupes"],
+    queryFn: () => base44.entities.Expense.list("-date", 2000),
+  });
+
   const handleCSVImport = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -248,11 +253,6 @@ ${csvText}`,
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   }
-
-  const { data: allExpensesForDupes = [] } = useQuery({
-    queryKey: ["allExpensesForDupes"],
-    queryFn: () => base44.entities.Expense.list("-date", 2000),
-  });
 
   return (
     <div className="space-y-6">
