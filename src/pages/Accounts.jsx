@@ -15,6 +15,7 @@ import { Loader2, Upload, Download, FileText, AlertCircle } from "lucide-react";
 import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient, ALL_CATEGORIES, CLIENT_CATEGORIES } from "@/lib/constants";
 import AccountantExport from "../components/AccountantExport";
 import DuplicateDetector from "../components/DuplicateDetector";
+import PersonAvatar from '../components/PersonAvatar';
 
 export default function Accounts() {
   const queryClient = useQueryClient();
@@ -408,9 +409,23 @@ ${csvText}`,
                     <td className="px-2 py-1.5 text-center">
                       {txn.status === "pending" && (
                         <Select value={getRowState(txn).paid_by} onValueChange={v => updateRowState(txn.id, "paid_by", v)}>
-                          <SelectTrigger className="w-16 h-6 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="w-24 h-6 text-xs">
+                            {getRowState(txn).paid_by ? (
+                              <div className="flex items-center gap-1">
+                                <PersonAvatar code={getRowState(txn).paid_by} size="xs" />
+                                <span>{getRowState(txn).paid_by}</span>
+                              </div>
+                            ) : <SelectValue />}
+                          </SelectTrigger>
                           <SelectContent>
-                            {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code}</SelectItem>)}
+                            {PAID_BY_CODES.map(p => (
+                              <SelectItem key={p.code} value={p.code}>
+                                <div className="flex items-center gap-2">
+                                  <PersonAvatar code={p.code} size="xs" />
+                                  <span>{p.code} — {p.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
