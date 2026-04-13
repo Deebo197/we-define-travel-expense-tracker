@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Loader2, MapPin, Calculator, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, MapPin, Calculator, AlertTriangle, Pencil } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import ClientSplitInput from "../components/ClientSplitInput";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import PersonAvatar from "../components/PersonAvatar";
@@ -191,6 +192,44 @@ export default function MileageLog() {
     setSaving(false);
   };
 
+  const [selectedIds, setSelectedIds] = useState([]);
+  const toggleSelectId = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const deleteJourneys = useMutation({
+    mutationFn: async (ids) => {
+      for (const id of ids) await base44.entities.MileageJourney.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mileageJourneys"] });
+      setSelectedIds([]);
+    },
+  });
+
+  const saveEdit = useMutation({
+    mutationFn: async ({ id, data }) => {
+      await base44.entities.MileageJourney.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mileageJourneys"] });
+      setEditJourney(null);
+    },
+  });
+
+  const [editJourney, setEditJourney] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const openEdit = (j) => {
+    setEditJourney(j);
+    setEditForm({
+      date: j.date,
+      purpose: j.purpose,
+      total_miles: j.total_miles,
+      total_cost: j.total_cost,
+      category: j.category || "",
+      return_journey: j.return_journey || false,
+    });
+  };
+
   const [filterMonth, setFilterMonth] = useState("all");
   const [filterStaff, setFilterStaff] = useState("all");
   const months = [...new Set(myJourneys.map(j => j.month))].filter(Boolean);
@@ -209,9 +248,22 @@ export default function MileageLog() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Mileage Log</h1>
-        <Button onClick={() => setShowForm(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> New Journey
-        </Button>
+        <div className="flex gap-2">
+          {selectedIds.length === 1 && (
+            <Button size="sm" variant="outline" onClick={() => openEdit(filtered.find(j => j.id === selectedIds[0]))}>
+              <Pencil className="h-4 w-4 mr-1" /> Edit
+            </Button>
+          )}
+          {selectedIds.length > 0 && (
+            <Button size="sm" variant="destructive" disabled={deleteJourneys.isPending}
+              onClick={() => { if (confirm(`Delete ${selectedIds.length} journey(s)?`)) deleteJourneys.mutate(selectedIds); }}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete {selectedIds.length}
+            </Button>
+          )}
+          <Button onClick={() => setShowForm(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> New Journey
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -239,6 +291,12 @@ export default function MileageLog() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <th className="p-3 w-10">
+                <Checkbox
+                  checked={filtered.length > 0 && selectedIds.length === filtered.length}
+                  onCheckedChange={v => setSelectedIds(v ? filtered.map(j => j.id) : [])}
+                />
+              </th>
               <th className="p-3 text-left">Date</th>
               {isAdmin && <th className="p-3 text-left">Staff</th>}
               <th className="p-3 text-left">Route</th>
@@ -252,7 +310,10 @@ export default function MileageLog() {
           </thead>
           <tbody>
             {filtered.map(j => (
-              <tr key={j.id} className="border-t border-border hover:bg-muted/20">
+              <tr key={j.id} className={`border-t border-border hover:bg-muted/20 ${selectedIds.includes(j.id) ? "bg-primary/5" : ""}`}>
+                <td className="p-3">
+                  <Checkbox checked={selectedIds.includes(j.id)} onCheckedChange={() => toggleSelectId(j.id)} />
+                </td>
                 <td className="p-3 whitespace-nowrap">{formatDateUK(j.date)}</td>
                 {isAdmin && (
                   <td className="p-3">
@@ -294,6 +355,62 @@ export default function MileageLog() {
           <div className="py-12 text-center text-muted-foreground text-sm">No journeys recorded</div>
         )}
       </div>
+
+      {/* Edit journey dialog */}
+      <Dialog open={!!editJourney} onOpenChange={() => setEditJourney(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Mileage Journey</DialogTitle>
+          </DialogHeader>
+          {editJourney && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm font-medium">Date</Label>
+                  <Input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Total Miles</Label>
+                  <Input type="number" step="0.1" value={editForm.total_miles} onChange={e => setEditForm(f => ({ ...f, total_miles: parseFloat(e.target.value) || 0 }))} className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Total Cost £</Label>
+                <Input type="number" step="0.01" value={editForm.total_cost} onChange={e => setEditForm(f => ({ ...f, total_cost: parseFloat(e.target.value) || 0 }))} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Purpose</Label>
+                <Input value={editForm.purpose} onChange={e => setEditForm(f => ({ ...f, purpose: e.target.value }))} className="mt-1" />
+              </div>
+              {editJourney.category && (
+                <div>
+                  <Label className="text-sm font-medium">Category</Label>
+                  <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {getCategoriesForClient(editJourney.client_allocations?.[0]?.client_code).map(c => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <Switch checked={editForm.return_journey} onCheckedChange={v => setEditForm(f => ({ ...f, return_journey: v }))} />
+                <Label className="text-sm">Return journey</Label>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setEditJourney(null)}>Cancel</Button>
+                <Button className="flex-1" disabled={saveEdit.isPending}
+                  onClick={() => saveEdit.mutate({ id: editJourney.id, data: editForm })}>
+                  {saveEdit.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       {/* New journey dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
