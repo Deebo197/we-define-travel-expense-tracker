@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
 import ReceiptCapture from "../components/ReceiptCapture";
 import ClientSplitInput from "../components/ClientSplitInput";
 import CategorySelectItem from "../components/CategorySelectItem";
@@ -16,9 +16,19 @@ import { PAID_BY_CODES, formatMonth, isReimbursementRequired, formatCurrency, ge
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
 export default function SubmitExpense() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const draftId = urlParams.get('draft_id') || null;
+
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
     queryFn: () => base44.auth.me(),
+  });
+
+  const { data: draftExpense } = useQuery({
+    queryKey: ["draftExpense", draftId],
+    queryFn: () => base44.entities.Expense.filter({ id: draftId }),
+    enabled: !!draftId,
+    select: (data) => data?.[0] || null,
   });
 
   const [form, setForm] = useState({
@@ -35,6 +45,22 @@ export default function SubmitExpense() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
+
+  // Pre-fill from draft if available
+  useEffect(() => {
+    if (draftExpense) {
+      setForm(f => ({
+        ...f,
+        date: draftExpense.date || f.date,
+        description: draftExpense.description || f.description,
+        paid_amount: draftExpense.paid_amount || f.paid_amount,
+        actual_cost: draftExpense.actual_cost || draftExpense.paid_amount || f.actual_cost,
+        vat: draftExpense.vat || false,
+        receipt_file: draftExpense.receipt_file || f.receipt_file,
+        receipt_url: draftExpense.receipt_url || f.receipt_url,
+      }));
+    }
+  }, [draftExpense]);
 
   // Pre-fill paid_by with user's code
   const userPaidByCode = user?.paid_by_code || "";
@@ -125,7 +151,15 @@ export default function SubmitExpense() {
       source: "manual",
     };
 
-    await base44.entities.Expense.create(expense);
+    if (draftId) {
+      // Update the draft to confirmed
+      await base44.entities.Expense.update(draftId, {
+        ...expense,
+        status: 'confirmed',
+      });
+    } else {
+      await base44.entities.Expense.create(expense);
+    }
     setSuccess(receiptCode);
     setSubmitting(false);
   };
@@ -148,7 +182,15 @@ export default function SubmitExpense() {
 
   return (
     <div className="max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Submit Expense</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        {draftId ? 'Review & Confirm Expense' : 'Submit Expense'}
+      </h1>
+      {draftId && (
+        <div className="mb-5 flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+          This expense was extracted from an email. Please review all fields, assign a client allocation and category, then submit.
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Receipt Capture */}

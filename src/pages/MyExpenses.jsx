@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,8 +9,11 @@ import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import { CLIENT_CODES, formatCurrency, formatDateUK, getClientName } from "@/lib/constants";
+import { AlertTriangle, ChevronRight } from "lucide-react";
 
 export default function MyExpenses() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
     queryFn: () => base44.auth.me(),
@@ -25,9 +29,12 @@ export default function MyExpenses() {
   const [filterClient, setFilterClient] = useState("all");
   const [selected, setSelected] = useState(null);
 
-  const months = [...new Set(expenses.map(e => e.month))].filter(Boolean);
+  const drafts = expenses.filter(e => e.status === 'draft');
+  const confirmed = expenses.filter(e => e.status !== 'draft');
 
-  const filtered = expenses.filter(e => {
+  const months = [...new Set(confirmed.map(e => e.month))].filter(Boolean);
+
+  const filtered = confirmed.filter(e => {
     if (filterMonth !== "all" && e.month !== filterMonth) return false;
     if (filterClient !== "all" && !e.client_allocations?.some(a => a.client_code === filterClient)) return false;
     return true;
@@ -44,6 +51,38 @@ export default function MyExpenses() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">My Expenses</h1>
+
+      {/* Draft / Pending section */}
+      {drafts.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <h2 className="text-base font-semibold text-amber-700">Pending — Action Required</h2>
+            <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">{drafts.length}</span>
+          </div>
+          <div className="space-y-2">
+            {drafts.map(exp => (
+              <button
+                key={exp.id}
+                onClick={() => navigate(`/submit-expense?draft_id=${exp.id}`)}
+                className="w-full text-left bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full whitespace-nowrap">Action Required</span>
+                  <div>
+                    <p className="text-sm font-medium">{exp.description}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{formatDateUK(exp.date)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold">{formatCurrency(exp.paid_amount)}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">

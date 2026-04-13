@@ -107,9 +107,19 @@
       "enum": [
         "manual",
         "csv_import",
-        "mileage"
+        "mileage",
+        "email_intake"
       ],
       "default": "manual"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "draft",
+        "confirmed"
+      ],
+      "default": "confirmed"
     },
     "drive_sync_failed": {
       "type": "boolean",
