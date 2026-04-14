@@ -32,11 +32,10 @@ export default function Sidebar({ onClose }) {
   return (
     <div className="h-full bg-card border-r border-border flex flex-col">
       {/* Logo */}
-      <div className="p-5 flex items-center justify-between">
+      <div className="px-4 py-3 flex items-center justify-between">
         <Link to={getHomePath()} className="flex items-center gap-3" onClick={onClose}>
           <img src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/d922465fa_image.png"
-
-          alt="We Define Travel" className="h-14 w-auto object-contain" />
+          alt="We Define Travel" className="h-20 w-auto object-contain" />
 
           
         </Link>
