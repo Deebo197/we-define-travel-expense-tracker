@@ -30,7 +30,7 @@ export default function AccountantExport() {
 
   const handleCSVExport = () => {
     setGeneratingCSV(true);
-    const headers = ["Date","Client(s)","Description","Category","Paid By","Actual Cost","Paid Amount","VAT","Receipt Code","Split Details","Reimbursement Required","Reimbursement Paid","Month","Year","Receipt URL"];
+    const headers = ["Date","Client(s)","Description","Category","Paid By","Actual Cost (GBP)","Paid Amount (GBP)","Currency","Original Amount","Exchange Rate","VAT","Receipt Code","Split Details","Reimbursement Required","Reimbursement Paid","Month","Year","Receipt URL"];
     const rows = filtered.map(e => [
       formatDateUK(e.date),
       e.client_allocations?.map(a => `${a.client_code}(${a.percentage}%)`).join("; "),
@@ -39,6 +39,9 @@ export default function AccountantExport() {
       e.paid_by,
       e.actual_cost || "",
       e.paid_amount || "",
+      e.currency || "GBP",
+      e.currency && e.currency !== "GBP" ? (e.original_amount || "") : "",
+      e.currency && e.currency !== "GBP" ? (e.exchange_rate || "") : "",
       e.vat ? "Y" : "N",
       e.receipt_code || "",
       e.client_allocations?.map(a => `${a.client_code}:£${a.amount}`).join("; "),
@@ -136,7 +139,8 @@ export default function AccountantExport() {
             }
 
             const dateStr = formatDateUK(item.date);
-            const descStr = item.description.substring(0, 35);
+            const hasForeign = item.currency && item.currency !== "GBP" && item.original_amount;
+            const descStr = (item.description.substring(0, 30)) + (hasForeign ? ` [${item.currency}]` : "");
             const amountStr = formatCurrency(item.clientAmount);
 
             pdf.text(dateStr, margin + 1, yPos);

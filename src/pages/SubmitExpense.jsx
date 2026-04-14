@@ -13,6 +13,7 @@ import ClientSplitInput from "../components/ClientSplitInput";
 import CategorySelectItem from "../components/CategorySelectItem";
 import PersonAvatar from "../components/PersonAvatar";
 import { PAID_BY_CODES, formatMonth, isReimbursementRequired, formatCurrency, getCategoriesForClient } from "@/lib/constants";
+import CurrencySelector from "../components/CurrencySelector";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
 export default function SubmitExpense() {
@@ -41,6 +42,9 @@ export default function SubmitExpense() {
     category: "",
     receipt_file: "",
     receipt_url: "",
+    currency: "GBP",
+    original_amount: "",
+    exchange_rate: null,
     client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }],
   });
   const [submitting, setSubmitting] = useState(false);
@@ -149,6 +153,9 @@ export default function SubmitExpense() {
       submitted_by: user?.email,
       submitted_by_name: user?.full_name,
       source: "manual",
+      currency: form.currency || "GBP",
+      original_amount: form.currency !== "GBP" ? parseFloat(form.original_amount) || null : null,
+      exchange_rate: form.currency !== "GBP" ? form.exchange_rate || null : null,
     };
 
     if (draftId) {
@@ -225,10 +232,33 @@ export default function SubmitExpense() {
           />
         </div>
 
+        {/* Currency */}
+        <CurrencySelector
+          currency={form.currency}
+          originalAmount={form.original_amount}
+          exchangeRate={form.exchange_rate}
+          onCurrencyChange={(v) => setForm(f => ({ ...f, currency: v }))}
+          onOriginalAmountChange={(v) => setForm(f => ({ ...f, original_amount: v }))}
+          onExchangeRateChange={(v) => setForm(f => ({ ...f, exchange_rate: v }))}
+          onGbpAmountChange={(gbp) => {
+            setForm(f => ({
+              ...f,
+              paid_amount: gbp,
+              actual_cost: gbp,
+              client_allocations: f.client_allocations.map(a => ({
+                ...a,
+                amount: Math.round((gbp * (a.percentage || 0) / 100) * 100) / 100,
+              })),
+            }));
+          }}
+        />
+
         {/* Amount */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-sm font-medium">Paid Amount £ *</Label>
+            <Label className="text-sm font-medium">
+              {form.currency && form.currency !== "GBP" ? "Converted Amount £ (GBP) *" : "Paid Amount £ *"}
+            </Label>
             <Input
               type="number"
               step="0.01"

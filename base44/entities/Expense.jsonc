@@ -56,7 +56,20 @@
     },
     "paid_amount": {
       "type": "number",
-      "title": "Paid Amount"
+      "title": "Paid Amount (GBP)"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Original Currency",
+      "default": "GBP"
+    },
+    "original_amount": {
+      "type": "number",
+      "title": "Original Amount (Foreign Currency)"
+    },
+    "exchange_rate": {
+      "type": "number",
+      "title": "Exchange Rate (to GBP)"
     },
     "vat": {
       "type": "boolean",

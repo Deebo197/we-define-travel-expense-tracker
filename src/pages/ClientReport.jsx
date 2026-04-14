@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, FileDown, Eye } from "lucide-react";
-import { CLIENT_CODES, getClientName, formatCurrency, formatDateUK, COMPANY_INFO } from "@/lib/constants";
+import { CLIENT_CODES, getClientName, formatCurrency, formatForeignCurrency, formatDateUK, COMPANY_INFO } from "@/lib/constants";
 
 export default function ClientReport() {
   const [clientCode, setClientCode] = useState("");
@@ -193,7 +193,12 @@ export default function ClientReport() {
                 {items.map((item, i) => (
                   <div key={item.id} className={`grid grid-cols-[90px_1fr_100px_100px_80px] px-3 py-2 text-sm border-b border-gray-100 ${i % 2 === 1 ? "bg-[#F5F5F5]" : ""}`}>
                     <span>{formatDateUK(item.date)}</span>
-                    <span className="pr-2">{item.description}</span>
+                    <span className="pr-2">
+                      {item.description}
+                      {item.currency && item.currency !== "GBP" && item.original_amount && (
+                        <span className="block text-xs text-gray-400">{formatForeignCurrency(item.original_amount, item.currency)}{item.exchange_rate ? ` @ ${item.exchange_rate.toFixed(4)}` : ""}</span>
+                      )}
+                    </span>
                     <span>
                       {item.type === "mileage" && item.route_image_url ? (
                         <a href={item.route_image_url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs" title="View route map">{item.route_image_code || "Map"}</a>

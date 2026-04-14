@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
 import PersonAvatar from "../components/PersonAvatar";
-import { CLIENT_CODES, formatCurrency, formatDateUK, getClientName } from "@/lib/constants";
+import { CLIENT_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName } from "@/lib/constants";
 import { AlertTriangle, ChevronRight } from "lucide-react";
 
 export default function MyExpenses() {
@@ -132,7 +132,12 @@ export default function MyExpenses() {
                 {exp.client_allocations?.map(a => a.client_code).join(", ")}
               </span>
               <span className="text-sm truncate">{exp.description}</span>
-              <span className="text-sm font-semibold text-right">{formatCurrency(exp.paid_amount)}</span>
+              <div className="text-right">
+                <span className="text-sm font-semibold">{formatCurrency(exp.paid_amount)}</span>
+                {exp.currency && exp.currency !== "GBP" && exp.original_amount && (
+                  <div className="text-xs text-muted-foreground">{formatForeignCurrency(exp.original_amount, exp.currency)}</div>
+                )}
+              </div>
               <span className="text-center">
                 <ReimbursementBadge required={exp.reimbursement_required} paid={exp.reimbursement_paid} />
               </span>
@@ -152,7 +157,16 @@ export default function MyExpenses() {
           <div className="grid grid-cols-2 gap-3 text-sm">
            <div><span className="text-muted-foreground">Date:</span><br />{formatDateUK(selected.date)}</div>
            <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary font-medium">{selected.receipt_code}</span></div>
-           <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
+           <div>
+             <span className="text-muted-foreground">Paid Amount:</span><br />
+             {formatCurrency(selected.paid_amount)}
+             {selected.currency && selected.currency !== "GBP" && selected.original_amount && (
+               <div className="text-xs text-muted-foreground mt-0.5">
+                 {formatForeignCurrency(selected.original_amount, selected.currency)}
+                 {selected.exchange_rate && ` @ ${selected.exchange_rate.toFixed(4)}`}
+               </div>
+             )}
+           </div>
            <div><span className="text-muted-foreground">Paid By:</span><br /><PersonAvatar code={selected.paid_by} size="sm" showName={true} /></div>
           </div>
           <div className="text-sm">

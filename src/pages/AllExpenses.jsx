@@ -12,7 +12,7 @@ import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
 import CategorySelectItem from "../components/CategorySelectItem";
 import PersonAvatar from "../components/PersonAvatar";
-import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
+import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
 
 export default function AllExpenses() {
   const queryClient = useQueryClient();
@@ -211,7 +211,12 @@ export default function AllExpenses() {
                 <td className="p-3 cursor-pointer" onClick={() => setSelected(exp)}>
                   <PersonAvatar code={exp.paid_by} size="sm" showName={true} />
                 </td>
-                <td className="p-3 text-right font-semibold whitespace-nowrap">{formatCurrency(exp.paid_amount)}</td>
+                <td className="p-3 text-right font-semibold whitespace-nowrap">
+                  {formatCurrency(exp.paid_amount)}
+                  {exp.currency && exp.currency !== "GBP" && exp.original_amount && (
+                    <div className="text-xs text-muted-foreground font-normal">{formatForeignCurrency(exp.original_amount, exp.currency)}</div>
+                  )}
+                </td>
                 <td className="p-3 text-center">{exp.vat ? "Y" : "N"}</td>
                 <td className="p-3 text-center">
                   <ReimbursementBadge required={exp.reimbursement_required} paid={exp.reimbursement_paid} />
@@ -252,7 +257,15 @@ export default function AllExpenses() {
           <div className="grid grid-cols-2 gap-3">
            <div><span className="text-muted-foreground">Date:</span><br />{formatDateUK(selected.date)}</div>
            <div><span className="text-muted-foreground">Receipt Code:</span><br /><span className="font-mono text-primary">{selected.receipt_code}</span></div>
-           <div><span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}</div>
+           <div>
+             <span className="text-muted-foreground">Paid Amount:</span><br />{formatCurrency(selected.paid_amount)}
+             {selected.currency && selected.currency !== "GBP" && selected.original_amount && (
+               <div className="text-xs text-muted-foreground mt-0.5">
+                 {formatForeignCurrency(selected.original_amount, selected.currency)}
+                 {selected.exchange_rate && ` @ rate ${selected.exchange_rate.toFixed(4)}`}
+               </div>
+             )}
+           </div>
            <div><span className="text-muted-foreground">Actual Cost:</span><br />{formatCurrency(selected.actual_cost)}</div>
            <div><span className="text-muted-foreground">Paid By:</span><br /><PersonAvatar code={selected.paid_by} size="sm" showName={true} /></div>
            <div><span className="text-muted-foreground">Submitted By:</span><br />{selected.submitted_by_name}</div>

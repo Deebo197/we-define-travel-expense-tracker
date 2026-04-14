@@ -99,6 +99,15 @@ export function formatCurrency(amount) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount || 0);
 }
 
+export function formatForeignCurrency(amount, currencyCode) {
+  if (!amount || !currencyCode || currencyCode === "GBP") return null;
+  try {
+    return new Intl.NumberFormat("en-GB", { style: "currency", currency: currencyCode }).format(amount);
+  } catch {
+    return `${currencyCode} ${Number(amount).toFixed(2)}`;
+  }
+}
+
 export function formatDateUK(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
