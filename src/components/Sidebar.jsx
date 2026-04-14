@@ -33,16 +33,24 @@ export default function Sidebar({ onClose }) {
     <div className="h-full bg-card border-r border-border flex flex-col">
       {/* Logo */}
       <div className="p-5 flex items-center justify-between">
-        <Link to={getHomePath()} className="flex items-center gap-3" onClick={onClose}>
+        <Link to={getHomePath()} className="flex items-center gap-2" onClick={onClose}>
           <img
-            src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/5a122ba74_wdt-logo-v1-logo-full-colour-rgb.jpg"
-            alt="We Define Travel"
-            className="h-10 w-auto object-contain"
+            src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/b0e92e42e_repevologo.png"
+            alt="repevo."
+            className="h-14 w-auto object-contain"
           />
         </Link>
         <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg hover:bg-accent">
           <X className="h-4 w-4" />
         </button>
+      </div>
+      {/* Client brand */}
+      <div className="px-5 pb-3">
+        <img
+          src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/5a122ba74_wdt-logo-v1-logo-full-colour-rgb.jpg"
+          alt="We Define Travel"
+          className="h-5 w-auto object-contain opacity-70"
+        />
       </div>
 
       {/* Navigation */}
