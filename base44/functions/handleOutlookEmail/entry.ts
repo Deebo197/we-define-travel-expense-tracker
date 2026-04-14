@@ -1,9 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Map: shared mailbox address → real user email
 const ALIAS_TO_USER = {
   'expenses-dee@wedefine.travel':     'dee@wedefine.travel',
   'expenses-celine@wedefine.travel':  'celine@wedefine.travel',
   'expenses-sophie@wedefine.travel':  'sophie@wedefine.travel',
+};
+
+// Also accept main user inboxes as a fallback (if shared mailbox forwards here)
+const USER_TO_USER = {
+  'dee@wedefine.travel':     'dee@wedefine.travel',
+  'celine@wedefine.travel':  'celine@wedefine.travel',
+  'sophie@wedefine.travel':  'sophie@wedefine.travel',
 };
 
 const EXPENSE_ALIASES = Object.keys(ALIAS_TO_USER);
@@ -35,35 +43,11 @@ async function graphRequest(accessToken, path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-// Try fetching a message from /me or from a shared mailbox path
-async function fetchMessage(accessToken, messageId) {
-  // First try /me/messages (alias on same account or main inbox)
-  try {
-    const msg = await graphRequest(accessToken, `/me/messages/${messageId}?$select=id,subject,toRecipients,hasAttachments,sender`);
-    if (msg) return { msg, basePath: '/me' };
-  } catch (e) {
-    console.log('Not found in /me/messages, trying shared mailboxes...');
-  }
-
-  // Try each shared mailbox
-  for (const alias of EXPENSE_ALIASES) {
-    try {
-      const msg = await graphRequest(accessToken, `/users/${encodeURIComponent(alias)}/messages/${messageId}?$select=id,subject,toRecipients,hasAttachments,sender`);
-      if (msg) return { msg, basePath: `/users/${encodeURIComponent(alias)}` };
-    } catch (e) {
-      // not in this mailbox
-    }
-  }
-
-  return null;
-}
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
 
-    // The platform wraps the Graph notification in { data: { value: [...] } }
     const notifications = body?.data?.value || body?.value || [];
 
     if (!notifications.length) {
@@ -80,40 +64,46 @@ Deno.serve(async (req) => {
       const messageId = notification.resourceData?.id;
       if (!messageId) continue;
 
-      const found = await fetchMessage(accessToken, messageId);
-      if (!found) {
-        console.log(`Message ${messageId} not found in any mailbox`);
-        results.push({ messageId, skipped: 'message not found' });
+      // Fetch the message from /me
+      let message = null;
+      try {
+        message = await graphRequest(accessToken, `/me/messages/${messageId}?$select=id,subject,toRecipients,hasAttachments,sender`);
+      } catch (e) {
+        console.log(`Could not fetch message ${messageId}:`, e.message);
         continue;
       }
 
-      const { msg: message, basePath } = found;
-      console.log(`Found message in ${basePath}: subject="${message.subject}"`);
+      if (!message) continue;
 
-      // Determine which expense alias it was sent to
       const toAddresses = (message.toRecipients || []).map(r => r.emailAddress?.address?.toLowerCase());
-      console.log('toRecipients:', toAddresses);
+      console.log(`Message subject="${message.subject}", toRecipients:`, toAddresses);
 
-      const matchedAlias = EXPENSE_ALIASES.find(alias => toAddresses.includes(alias));
+      // First try matching an expense alias directly
+      let matchedAlias = EXPENSE_ALIASES.find(alias => toAddresses.includes(alias));
+      let toEmail = matchedAlias ? ALIAS_TO_USER[matchedAlias] : null;
 
-      // If not matched by toRecipients, infer from basePath (shared mailbox)
-      const inferredAlias = matchedAlias || EXPENSE_ALIASES.find(alias => basePath.includes(encodeURIComponent(alias)));
+      // Fallback: match main user email (shared mailbox may forward here)
+      if (!toEmail) {
+        const matchedUser = Object.keys(USER_TO_USER).find(u => toAddresses.includes(u));
+        if (matchedUser) toEmail = USER_TO_USER[matchedUser];
+      }
 
-      if (!inferredAlias) {
-        console.log('No matching expense alias found for this message');
-        results.push({ messageId, skipped: 'no matching alias' });
-        continue;
+      // Last resort: if the webhook is for dee's account, default to dee
+      if (!toEmail) {
+        console.log('No alias or user match in toRecipients — defaulting to dee@wedefine.travel');
+        toEmail = 'dee@wedefine.travel';
       }
 
       if (!message.hasAttachments) {
+        console.log('No attachments, skipping');
         results.push({ messageId, skipped: 'no attachments' });
         continue;
       }
 
       // Fetch attachments
-      const attachmentsResp = await graphRequest(accessToken, `${basePath}/messages/${messageId}/attachments`);
+      const attachmentsResp = await graphRequest(accessToken, `/me/messages/${messageId}/attachments`);
       const attachments = attachmentsResp?.value || [];
-      console.log(`Found ${attachments.length} attachment(s)`);
+      console.log(`Found ${attachments.length} attachment(s):`, attachments.map(a => `${a.name} (${a.contentType})`));
 
       const attachment = attachments.find(a =>
         a['@odata.type'] === '#microsoft.graph.fileAttachment' &&
@@ -125,16 +115,12 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      console.log(`Processing attachment: ${attachment.name} (${attachment.contentType})`);
+      console.log(`Uploading attachment: ${attachment.name}`);
 
-      // Upload attachment to base44 storage
       const binary = Uint8Array.from(atob(attachment.contentBytes), c => c.charCodeAt(0));
       const blob = new Blob([binary], { type: attachment.contentType });
       const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
 
-      const toEmail = ALIAS_TO_USER[inferredAlias];
-
-      // Call processEmailExpense
       const expenseResult = await base44.asServiceRole.functions.invoke('processEmailExpense', {
         to_email: toEmail,
         from_email: message.sender?.emailAddress?.address || '',
@@ -142,8 +128,8 @@ Deno.serve(async (req) => {
         attachment_url: uploadResult.file_url,
       });
 
-      console.log(`Created draft expense for ${toEmail}:`, expenseResult?.expense_id);
-      results.push({ messageId, alias: inferredAlias, to_email: toEmail, expense_id: expenseResult?.data?.expense_id });
+      console.log(`Draft expense created for ${toEmail}, id:`, expenseResult?.data?.expense_id);
+      results.push({ messageId, to_email: toEmail, expense_id: expenseResult?.data?.expense_id });
     }
 
     return Response.json({ processed: results });
