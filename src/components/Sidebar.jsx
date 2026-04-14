@@ -5,7 +5,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
@@ -20,15 +19,12 @@ const navItems = [
 
 export default function Sidebar({ onClose }) {
   const location = useLocation();
-  
-  const { data: user } = useQuery({
-    queryKey: ["currentUser"],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user, isLoadingAuth } = useAuth();
 
   const isAdmin = user?.role === "admin";
 
-  const filteredNav = navItems.filter(item => !item.adminOnly || isAdmin);
+  // While auth is loading, show all items (AdminRoute handles actual access control)
+  const filteredNav = navItems.filter(item => !item.adminOnly || isAdmin || isLoadingAuth);
 
   // For non-admin, default route is submit-expense
   const getHomePath = () => isAdmin ? "/" : "/submit-expense";
