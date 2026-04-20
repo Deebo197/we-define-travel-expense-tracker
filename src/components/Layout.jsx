@@ -28,12 +28,12 @@ export default function Layout() {
       {/* Main content */}
       <div className="flex-1 min-w-0">
         {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-center px-4 py-3" style={{ backgroundColor: "#14141B", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <img
-            src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/5a122ba74_wdt-logo-v1-logo-full-colour-rgb.jpg"
-            alt="We Define Travel"
-            className="h-8 w-auto object-contain"
-          />
+        <div className="lg:hidden flex items-center justify-center px-4 py-3 border-b border-border bg-card">
+          <img src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/b0e92e42e_repevologo.png"
+
+          alt="We Define Travel" className="h-8 w-auto object-contain" />
+
+          
         </div>
 
         <main className="p-4 md:p-6 lg:p-8 max-w-7xl pb-28 lg:pb-8">
@@ -45,6 +45,6 @@ export default function Layout() {
       <div className="lg:hidden">
         <BottomNav />
       </div>
-    </div>
-  );
+    </div>);
+
 }
