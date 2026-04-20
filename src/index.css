@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,76 +6,65 @@
 
 @layer base {
   :root {
-    --font-inter: 'Inter', sans-serif;
-    
-    --background: 0 0% 97%;
-    --foreground: 0 0% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 11%;
-    --primary: 352 90% 42%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 17%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 0 0% 94%;
-    --accent-foreground: 0 0% 11%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89%;
-    --input: 0 0% 89%;
-    --ring: 352 90% 42%;
-    --chart-1: 352 90% 42%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.625rem;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 17%;
-    --sidebar-primary: 352 90% 42%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 11%;
-    --sidebar-border: 0 0% 92%;
-    --sidebar-ring: 352 90% 42%;
-  }
+    --font-inter: 'Inter', 'SF Pro Display', system-ui, sans-serif;
 
-  .dark {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 352 90% 50%;
+    /* MoonPay-style dark tokens */
+    --bg-base: #0B0B0F;
+    --bg-surface: #14141B;
+    --bg-surface-2: #1C1C26;
+    --bg-elevated: #22222E;
+
+    --text-primary: #FFFFFF;
+    --text-secondary: #A1A1B5;
+    --text-tertiary: #6C6C80;
+
+    --grad-start: #7F5BFF;
+    --grad-mid: #6F3BFF;
+    --grad-end: #3A1DFF;
+
+    --success: #3DDC97;
+    --warning: #FFB547;
+    --danger: #FF5C7A;
+
+    --border-soft: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.12);
+
+    /* Shadcn token mappings */
+    --background: 240 6% 5%;
+    --foreground: 0 0% 100%;
+    --card: 240 6% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 240 6% 13%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 258 100% 68%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 63%;
-    --accent: 0 0% 14%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 352 90% 50%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 352 90% 50%;
+    --secondary: 240 5% 16%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 5% 16%;
+    --muted-foreground: 240 5% 62%;
+    --accent: 240 5% 16%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 348 100% 68%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 14%;
+    --input: 240 6% 14%;
+    --ring: 258 100% 68%;
+    --radius: 1.25rem;
+
+    --sidebar-background: 240 6% 10%;
+    --sidebar-foreground: 0 0% 63%;
+    --sidebar-primary: 258 100% 68%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 14%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 352 90% 50%;
+    --sidebar-accent: 240 6% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 6% 14%;
+    --sidebar-ring: 258 100% 68%;
+
+    --chart-1: 258 100% 68%;
+    --chart-2: 158 68% 55%;
+    --chart-3: 38 100% 64%;
+    --chart-4: 348 100% 68%;
+    --chart-5: 200 80% 55%;
   }
 }
 
@@ -84,6 +73,43 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-inter;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-inter);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tabular numbers everywhere money appears */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Brand gradient utility */
+@layer utilities {
+  .brand-gradient {
+    background: linear-gradient(135deg, #7F5BFF 0%, #6F3BFF 50%, #3A1DFF 100%);
+  }
+  .brand-gradient-text {
+    background: linear-gradient(135deg, #7F5BFF 0%, #6F3BFF 50%, #3A1DFF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .card-elevation {
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 24px 48px -24px rgba(0,0,0,0.6);
+  }
+  .hero-glow {
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(120% 80% at 0% 0%, rgba(127,91,255,0.35), transparent 60%);
+    pointer-events: none;
   }
 }

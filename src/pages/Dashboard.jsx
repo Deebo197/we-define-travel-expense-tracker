@@ -19,6 +19,49 @@ function getMonthRange(filter) {
   return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear(), 11, 31) };
 }
 
+function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub }) {
+  return (
+    <div
+      className="rounded-[20px] p-5 card-elevation"
+      style={{
+        backgroundColor: "#14141B",
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: iconBg }}
+        >
+          <Icon className="h-5 w-5" style={{ color: iconColor }} strokeWidth={1.75} />
+        </div>
+        <span className="text-sm font-medium" style={{ color: "#A1A1B5" }}>{label}</span>
+      </div>
+      <p className="text-3xl font-semibold tabular-nums" style={{ color: "#FFFFFF", letterSpacing: "-0.02em" }}>{value}</p>
+      <p className="text-xs mt-1" style={{ color: "#6C6C80" }}>{sub}</p>
+    </div>
+  );
+}
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div
+        className="rounded-[14px] px-3 py-2 text-sm"
+        style={{
+          backgroundColor: "#22222E",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: "#fff",
+        }}
+      >
+        <p style={{ color: "#A1A1B5" }}>{getClientName(label)}</p>
+        <p className="font-semibold tabular-nums">{formatCurrency(payload[0].value)}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const [period, setPeriod] = useState("this_month");
 
@@ -28,7 +71,7 @@ export default function Dashboard() {
   });
 
   const range = getMonthRange(period);
-  const periodExpenses = useMemo(() => 
+  const periodExpenses = useMemo(() =>
     expenses.filter(e => {
       const d = new Date(e.date);
       return d >= range.start && d <= range.end;
@@ -38,7 +81,6 @@ export default function Dashboard() {
 
   const totalSpend = periodExpenses.reduce((s, e) => s + (e.paid_amount || 0), 0);
 
-  // Spend per client
   const clientSpend = useMemo(() => {
     const map = {};
     periodExpenses.forEach(e => {
@@ -49,7 +91,6 @@ export default function Dashboard() {
     return CLIENT_CODES.map(c => ({ code: c.code, name: c.name, amount: map[c.code] || 0 })).filter(c => c.amount > 0);
   }, [periodExpenses]);
 
-  // Pending reimbursements
   const pendingReimb = expenses.filter(e => e.reimbursement_required && !e.reimbursement_paid);
   const reimbByPerson = useMemo(() => {
     const map = {};
@@ -66,17 +107,27 @@ export default function Dashboard() {
   const recentExpenses = useMemo(() => expenses.slice(0, 10), [expenses]);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "#7F5BFF" }} />
+      </div>
+    );
   }
 
   const periodLabel = period === "this_month" ? "This Month" : period === "last_month" ? "Last Month" : "This Year";
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1
+          className="text-[28px] font-semibold"
+          style={{ color: "#FFFFFF", letterSpacing: "-0.02em" }}
+        >
+          Dashboard
+        </h1>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-36 h-9">
+          <SelectTrigger className="w-36 h-9 text-sm" style={{ height: "36px" }}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -87,110 +138,165 @@ export default function Dashboard() {
         </Select>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card rounded-xl border border-border p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm text-muted-foreground font-medium">Total Spend</span>
-          </div>
-          <p className="text-3xl font-bold">{formatCurrency(totalSpend)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{periodLabel} — {periodExpenses.length} expenses</p>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-red-500" />
-            </div>
-            <span className="text-sm text-muted-foreground font-medium">Pending Reimbursements</span>
-          </div>
-          <p className="text-3xl font-bold">{formatCurrency(pendingReimb.reduce((s, e) => s + (e.paid_amount || 0), 0))}</p>
-          <p className="text-xs text-muted-foreground mt-1">{pendingReimb.length} items outstanding</p>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Receipt className="h-5 w-5 text-blue-500" />
-            </div>
-            <span className="text-sm text-muted-foreground font-medium">Expenses This Period</span>
-          </div>
-          <p className="text-3xl font-bold">{periodExpenses.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">{clientSpend.length} clients</p>
-        </div>
+      {/* Hero balance card */}
+      <div
+        className="rounded-[20px] p-6 hero-glow card-elevation relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #7F5BFF 0%, #6F3BFF 50%, #3A1DFF 100%)",
+        }}
+      >
+        <p className="text-sm font-medium mb-2" style={{ color: "rgba(255,255,255,0.8)" }}>
+          Total spend — {periodLabel}
+        </p>
+        <p
+          className="tabular-nums font-semibold"
+          style={{ fontSize: "48px", letterSpacing: "-0.03em", lineHeight: 1.05, color: "#FFFFFF" }}
+        >
+          {formatCurrency(totalSpend)}
+        </p>
+        <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.65)" }}>
+          {periodExpenses.length} expenses across {clientSpend.length} clients
+        </p>
       </div>
 
-      {/* Charts and info */}
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          icon={TrendingUp}
+          iconBg="rgba(127,91,255,0.15)"
+          iconColor="#7F5BFF"
+          label="Total Spend"
+          value={formatCurrency(totalSpend)}
+          sub={`${periodLabel} — ${periodExpenses.length} expenses`}
+        />
+        <StatCard
+          icon={CreditCard}
+          iconBg="rgba(255,92,122,0.15)"
+          iconColor="#FF5C7A"
+          label="Pending Reimbursements"
+          value={formatCurrency(pendingReimb.reduce((s, e) => s + (e.paid_amount || 0), 0))}
+          sub={`${pendingReimb.length} items outstanding`}
+        />
+        <StatCard
+          icon={Receipt}
+          iconBg="rgba(61,220,151,0.15)"
+          iconColor="#3DDC97"
+          label="Expenses This Period"
+          value={periodExpenses.length.toString()}
+          sub={`${clientSpend.length} clients`}
+        />
+      </div>
+
+      {/* Charts and reimbursements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Client spend chart */}
-        <div className="bg-card rounded-xl border border-border p-5">
-          <h3 className="font-semibold mb-4">Spend by Client — {periodLabel}</h3>
+        <div
+          className="rounded-[20px] p-5 card-elevation"
+          style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <h3 className="font-semibold mb-4 text-[20px]" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+            Spend by Client
+          </h3>
           {clientSpend.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={clientSpend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="code" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `£${v}`} />
-                <Tooltip formatter={v => formatCurrency(v)} labelFormatter={l => getClientName(l)} />
-                <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="code" tick={{ fontSize: 12, fill: "#6C6C80" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#6C6C80" }} tickFormatter={v => `£${v}`} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(127,91,255,0.06)" }} />
+                <Bar dataKey="amount" fill="url(#barGradient)" radius={[8, 8, 0, 0]} />
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7F5BFF" />
+                    <stop offset="100%" stopColor="#3A1DFF" />
+                  </linearGradient>
+                </defs>
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-center text-muted-foreground py-10 text-sm">No expenses in this period</p>
+            <p className="text-center py-10 text-sm" style={{ color: "#6C6C80" }}>No expenses in this period</p>
           )}
         </div>
 
         {/* Pending reimbursements */}
-        <div className="bg-card rounded-xl border border-border p-5">
-          <h3 className="font-semibold mb-4">Reimbursements Owed</h3>
+        <div
+          className="rounded-[20px] p-5 card-elevation"
+          style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <h3 className="font-semibold mb-4 text-[20px]" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+            Reimbursements Owed
+          </h3>
           {reimbByPerson.length > 0 ? (
             <div className="space-y-3">
               {reimbByPerson.map(p => (
-                <div key={p.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div
+                  key={p.name}
+                  className="flex items-center justify-between p-3 rounded-[14px] transition-colors"
+                  style={{ backgroundColor: "#1C1C26" }}
+                >
                   <div className="flex items-center gap-3">
                     <PersonAvatar code={p.code} size="sm" />
                     <div>
-                      <div className="font-medium text-sm">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">{p.count} items pending</div>
+                      <div className="font-medium text-sm" style={{ color: "#FFFFFF" }}>{p.name}</div>
+                      <div className="text-xs" style={{ color: "#6C6C80" }}>{p.count} items pending</div>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-primary">{formatCurrency(p.total)}</span>
+                  <span className="text-lg font-semibold tabular-nums" style={{ color: "#7F5BFF" }}>
+                    {formatCurrency(p.total)}
+                  </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-10 text-sm">All reimbursements settled</p>
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(61,220,151,0.1)" }}>
+                <Receipt className="h-5 w-5" style={{ color: "#3DDC97" }} strokeWidth={1.75} />
+              </div>
+              <p className="text-sm" style={{ color: "#6C6C80" }}>All reimbursements settled</p>
+            </div>
           )}
         </div>
       </div>
 
       {/* Recent expenses */}
-      <div className="bg-card rounded-xl border border-border">
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="font-semibold">Recent Expenses</h3>
+      <div
+        className="rounded-[20px] overflow-hidden card-elevation"
+        style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <h3 className="font-semibold text-[20px]" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+            Recent Expenses
+          </h3>
         </div>
-        <div className="divide-y divide-border">
-          {recentExpenses.map(exp => (
-            <div key={exp.id} className="flex items-center justify-between px-5 py-3">
-            <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{formatDateUK(exp.date)}</span>
-              <span className="text-xs text-muted-foreground">by</span>
-              <PersonAvatar code={exp.paid_by} size="xs" showName={true} />
-            </div>
-                <p className="text-sm text-muted-foreground truncate">{exp.description}</p>
+        <div>
+          {recentExpenses.map((exp, idx) => (
+            <div
+              key={exp.id}
+              className="flex items-center justify-between px-5 py-4 transition-colors"
+              style={{
+                borderBottom: idx < recentExpenses.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+              }}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-medium" style={{ color: "#FFFFFF" }}>{formatDateUK(exp.date)}</span>
+                  <span className="text-xs" style={{ color: "#6C6C80" }}>by</span>
+                  <PersonAvatar code={exp.paid_by} size="xs" showName={true} />
+                </div>
+                <p className="text-sm truncate" style={{ color: "#6C6C80" }}>{exp.description}</p>
               </div>
               <div className="text-right ml-4">
-                <div className="text-sm font-semibold">{formatCurrency(exp.paid_amount)}</div>
-                <div className="text-xs text-muted-foreground">{exp.client_allocations?.map(a => a.client_code).join(", ")}</div>
+                <div className="text-sm font-semibold tabular-nums" style={{ color: "#FFFFFF" }}>
+                  {formatCurrency(exp.paid_amount)}
+                </div>
+                <div className="text-xs" style={{ color: "#6C6C80" }}>
+                  {exp.client_allocations?.map(a => a.client_code).join(", ")}
+                </div>
               </div>
             </div>
           ))}
           {recentExpenses.length === 0 && (
-            <div className="py-8 text-center text-muted-foreground text-sm">No expenses yet</div>
+            <div className="py-10 text-center text-sm" style={{ color: "#6C6C80" }}>No expenses yet</div>
           )}
         </div>
       </div>

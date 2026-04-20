@@ -8,9 +8,10 @@ module.exports = {
   			inter: ['var(--font-inter)']
   		},
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			lg: '20px',
+  			md: '14px',
+  			sm: '10px',
+  			full: '999px',
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -66,28 +67,36 @@ module.exports = {
   		},
   		keyframes: {
   			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
+  				from: { height: '0' },
+  				to: { height: 'var(--radix-accordion-content-height)' }
   			},
   			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
+  				from: { height: 'var(--radix-accordion-content-height)' },
+  				to: { height: '0' }
+  			},
+  			'count-up': {
+  				from: { opacity: '0', transform: 'translateY(8px)' },
+  				to: { opacity: '1', transform: 'translateY(0)' }
+  			},
+  			'shimmer': {
+  				'0%': { backgroundPosition: '-200% 0' },
+  				'100%': { backgroundPosition: '200% 0' }
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'count-up': 'count-up 0.6s ease-out forwards',
+  			'shimmer': 'shimmer 2s linear infinite',
+  		},
+  		transitionTimingFunction: {
+  			'fintech': 'cubic-bezier(0.22, 1, 0.36, 1)',
   		}
   	}
   },
+  safelist: [
+    'brand-gradient', 'brand-gradient-text', 'card-elevation', 'hero-glow', 'tabular-nums'
+  ],
   plugins: [
     require("tailwindcss-animate"),
     function ({ addUtilities }) {
