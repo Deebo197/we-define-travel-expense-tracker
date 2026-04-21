@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+// In-memory cache: { [currency]: { rates, timestamp } }
+const rateCache = {};
 
 // Common currencies
 const CURRENCIES = [
@@ -33,13 +37,22 @@ export default function CurrencySelector({ currency, originalAmount, exchangeRat
     setFetching(true);
     setRateError("");
     try {
-      const res = await fetch(`https://open.er-api.com/v6/latest/GBP`);
-      const data = await res.json();
-      if (data?.rates?.[curr]) {
-        const rate = data.rates[curr]; // how many foreign units per 1 GBP
-        const rateToGBP = 1 / rate; // how many GBP per 1 foreign unit
+      // Use cache if less than 1 hour old
+      const cached = rateCache[curr];
+      let rates;
+      if (cached && Date.now() - cached.timestamp < 60 * 60 * 1000) {
+        rates = cached.rates;
+      } else {
+        const res = await fetch(`https://open.er-api.com/v6/latest/GBP`);
+        if (!res.ok) throw new Error(`Rate fetch failed (${res.status})`);
+        const data = await res.json();
+        rates = data.rates;
+        rateCache[curr] = { rates, timestamp: Date.now() };
+      }
+      if (rates?.[curr]) {
+        const rate = rates[curr];
+        const rateToGBP = 1 / rate;
         onExchangeRateChange(parseFloat(rateToGBP.toFixed(6)));
-        // Recalc GBP if we already have an original amount
         if (originalAmount) {
           const gbp = parseFloat((parseFloat(originalAmount) * rateToGBP).toFixed(2));
           onGbpAmountChange(gbp);
@@ -47,8 +60,9 @@ export default function CurrencySelector({ currency, originalAmount, exchangeRat
       } else {
         setRateError("Could not fetch rate. Please enter manually.");
       }
-    } catch {
+    } catch (err) {
       setRateError("Could not fetch rate. Please enter manually.");
+      toast.error(err.message || "Failed to fetch exchange rate");
     } finally {
       setFetching(false);
     }

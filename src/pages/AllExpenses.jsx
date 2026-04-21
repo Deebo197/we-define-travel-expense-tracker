@@ -13,6 +13,7 @@ import CategoryBadge from "../components/CategoryBadge";
 import CategorySelectItem from "../components/CategorySelectItem";
 import PersonAvatar from "../components/PersonAvatar";
 import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
+import { toast } from "sonner";
 
 export default function AllExpenses() {
   const queryClient = useQueryClient();
@@ -44,6 +45,7 @@ export default function AllExpenses() {
       queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
       setChecked([]);
     },
+    onError: (err) => toast.error(err.message || "Failed to mark as paid"),
   });
 
   const deleteExpenses = useMutation({
@@ -56,6 +58,7 @@ export default function AllExpenses() {
       queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
       setSelectedIds([]);
     },
+    onError: (err) => toast.error(err.message || "Failed to delete expenses"),
   });
 
   const saveEdit = useMutation({
@@ -66,6 +69,7 @@ export default function AllExpenses() {
       queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
       setEditExpense(null);
     },
+    onError: (err) => toast.error(err.message || "Failed to save changes"),
   });
 
   const toggleSelectId = (id) => {

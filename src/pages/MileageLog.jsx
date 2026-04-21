@@ -15,6 +15,7 @@ import ReimbursementBadge from "../components/ReimbursementBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import CategoryBadge from "../components/CategoryBadge";
 import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient } from "@/lib/constants";
+import { toast } from "sonner";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
 export default function MileageLog() {
@@ -146,50 +147,54 @@ export default function MileageLog() {
 
   const handleSave = async () => {
     setSaving(true);
-    const primaryClient = form.client_allocations[0]?.client_code;
-    const receiptCode = await generateReceiptCode(primaryClient, form.date);
-    const month = formatMonth(form.date);
-    const year = new Date(form.date).getFullYear();
-    const paidByEntry = PAID_BY_CODES.find(p => p.code === form.paid_by);
-
-    const journey = await base44.entities.MileageJourney.create({
-      date: form.date,
-      vehicle_type: form.vehicle_type,
-      rate_per_mile: getRate(),
-      purpose: form.purpose,
-      staff_member: form.paid_by,
-      staff_member_name: paidByEntry?.label || form.paid_by,
-      stops: form.stops,
-      return_journey: form.return_journey,
-      total_miles: parseFloat(form.total_miles) || 0,
-      total_cost: parseFloat(form.total_cost) || 0,
-      client_allocations: form.client_allocations,
-      category: form.category || "",
-      reimbursement_required: isReimbursementRequired(form.paid_by),
-      reimbursement_paid: false,
-      receipt_code: receiptCode,
-      route_image_url: '',
-      route_image_code: `ROUTE-${receiptCode}`,
-      month,
-      year,
-    });
-
-    // Generate and upload route image asynchronously (non-blocking)
     try {
-      const postcodes = form.stops.map(s => s.postcode);
-      const response = await base44.functions.invoke('generateRouteImage', { postcodes, journey_id: journey.id });
-      if (response.data?.file_url) {
-        await base44.entities.MileageJourney.update(journey.id, { route_image_url: response.data.file_url });
-      }
-    } catch (err) {
-      console.error('Route image generation failed:', err);
-      // Silently fail - journey already saved
-    }
+      const primaryClient = form.client_allocations[0]?.client_code;
+      const receiptCode = await generateReceiptCode(primaryClient, form.date);
+      const month = formatMonth(form.date);
+      const year = new Date(form.date).getFullYear();
+      const paidByEntry = PAID_BY_CODES.find(p => p.code === form.paid_by);
 
-    queryClient.invalidateQueries({ queryKey: ["mileageJourneys"] });
-    setShowForm(false);
-    setForm(getDefaultForm());
-    setSaving(false);
+      const journey = await base44.entities.MileageJourney.create({
+        date: form.date,
+        vehicle_type: form.vehicle_type,
+        rate_per_mile: getRate(),
+        purpose: form.purpose,
+        staff_member: form.paid_by,
+        staff_member_name: paidByEntry?.label || form.paid_by,
+        stops: form.stops,
+        return_journey: form.return_journey,
+        total_miles: parseFloat(form.total_miles) || 0,
+        total_cost: parseFloat(form.total_cost) || 0,
+        client_allocations: form.client_allocations,
+        category: form.category || "",
+        reimbursement_required: isReimbursementRequired(form.paid_by),
+        reimbursement_paid: false,
+        receipt_code: receiptCode,
+        route_image_url: '',
+        route_image_code: `ROUTE-${receiptCode}`,
+        month,
+        year,
+      });
+
+      // Generate and upload route image asynchronously (non-blocking)
+      try {
+        const postcodes = form.stops.map(s => s.postcode);
+        const response = await base44.functions.invoke('generateRouteImage', { postcodes, journey_id: journey.id });
+        if (response.data?.file_url) {
+          await base44.entities.MileageJourney.update(journey.id, { route_image_url: response.data.file_url });
+        }
+      } catch (err) {
+        console.error('Route image generation failed:', err);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["mileageJourneys"] });
+      setShowForm(false);
+      setForm(getDefaultForm());
+    } catch (err) {
+      toast.error(err.message || "Failed to save journey. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const [selectedIds, setSelectedIds] = useState([]);
@@ -203,6 +208,7 @@ export default function MileageLog() {
       queryClient.invalidateQueries({ queryKey: ["mileageJourneys"] });
       setSelectedIds([]);
     },
+    onError: (err) => toast.error(err.message || "Failed to delete journeys"),
   });
 
   const saveEdit = useMutation({
@@ -213,6 +219,7 @@ export default function MileageLog() {
       queryClient.invalidateQueries({ queryKey: ["mileageJourneys"] });
       setEditJourney(null);
     },
+    onError: (err) => toast.error(err.message || "Failed to save changes"),
   });
 
   const [editJourney, setEditJourney] = useState(null);

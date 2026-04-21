@@ -27,6 +27,12 @@ export const VEHICLE_TYPES = [
 
 export const REIMBURSEMENT_CODES = ["CB", "ST", "DJ"];
 
+export const STAFF_MEMBERS = [
+  { id: "DJ", name: "Dee" },
+  { id: "CB", name: "Celine" },
+  { id: "ST", name: "Sophie" },
+];
+
 export const COMPANY_INFO = {
   name: "We Define Travel Ltd",
   address: "Brightfield Business Hub, Bakewell Road, Orton Southgate, Peterborough, PE2 6XU",

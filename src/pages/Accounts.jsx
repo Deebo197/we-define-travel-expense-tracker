@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Upload, Download, FileText, AlertCircle } from "lucide-react";
 import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient, ALL_CATEGORIES, CLIENT_CATEGORIES } from "@/lib/constants";
+import { toast } from "sonner";
 import AccountantExport from "../components/AccountantExport";
 import DuplicateDetector from "../components/DuplicateDetector";
 import PersonAvatar from '../components/PersonAvatar';
@@ -128,7 +129,7 @@ ${csvText}`,
       },
     });
 
-    const txns = result?.transactions;
+    let txns = result?.transactions;
 
     if (!txns?.length) {
       setImportMessage({ type: "error", text: "No transactions found in the file. Please check the CSV format and column names." });
@@ -138,6 +139,17 @@ ${csvText}`,
     }
 
     if (txns?.length) {
+      // Validate LLM output — filter out bad rows
+      const validTxns = txns.filter(t =>
+        typeof t.amount === "number" && !isNaN(t.amount) &&
+        t.description && t.description.trim() !== "" &&
+        !isNaN(Date.parse(t.date))
+      );
+      const skipped = txns.length - validTxns.length;
+      if (skipped > 0) {
+        toast.warning(`${skipped} row(s) were skipped due to missing or invalid data (amount, date, or description).`);
+      }
+      txns = validTxns;
 
       for (const txn of txns) {
         // Apply saved alias if exists
@@ -189,6 +201,7 @@ ${csvText}`,
   };
 
   const submitAsExpense = useMutation({
+    onError: (err) => toast.error(err.message || "Failed to submit expense"),
     mutationFn: async (txn) => {
       const { paid_by, category } = getRowState(txn);
       const allocations = getRowAllocations(txn);
@@ -237,6 +250,7 @@ ${csvText}`,
       await base44.entities.BankTransaction.update(id, { status });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bankTransactions"] }),
+    onError: (err) => toast.error(err.message || "Failed to update status"),
   });
 
   const counts = useMemo(() => ({

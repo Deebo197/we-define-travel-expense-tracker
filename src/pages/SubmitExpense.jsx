@@ -13,6 +13,7 @@ import ClientSplitInput from "../components/ClientSplitInput";
 import CategorySelectItem from "../components/CategorySelectItem";
 import PersonAvatar from "../components/PersonAvatar";
 import { PAID_BY_CODES, formatMonth, isReimbursementRequired, formatCurrency, getCategoriesForClient } from "@/lib/constants";
+import { toast } from "sonner";
 import CurrencySelector from "../components/CurrencySelector";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
@@ -127,48 +128,48 @@ export default function SubmitExpense() {
     e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
+    try {
+      const primaryClient = form.client_allocations[0].client_code;
+      const receiptCode = await generateReceiptCode(primaryClient, form.date);
+      const dateObj = new Date(form.date);
+      const month = formatMonth(form.date);
+      const year = dateObj.getFullYear();
 
-    const primaryClient = form.client_allocations[0].client_code;
-    const receiptCode = await generateReceiptCode(primaryClient, form.date);
-    const dateObj = new Date(form.date);
-    const month = formatMonth(form.date);
-    const year = dateObj.getFullYear();
+      const expense = {
+        date: form.date,
+        description: form.description,
+        paid_amount: parseFloat(form.paid_amount),
+        actual_cost: parseFloat(form.actual_cost) || parseFloat(form.paid_amount),
+        vat: form.vat,
+        paid_by: form.paid_by,
+        category: form.category || "",
+        receipt_file: form.receipt_file,
+        receipt_url: form.receipt_file,
+        client_allocations: form.client_allocations,
+        receipt_code: receiptCode,
+        reimbursement_required: isReimbursementRequired(form.paid_by),
+        reimbursement_paid: false,
+        month,
+        year,
+        submitted_by: user?.email,
+        submitted_by_name: user?.full_name,
+        source: "manual",
+        currency: form.currency || "GBP",
+        original_amount: form.currency !== "GBP" ? parseFloat(form.original_amount) || null : null,
+        exchange_rate: form.currency !== "GBP" ? form.exchange_rate || null : null,
+      };
 
-    const expense = {
-      date: form.date,
-      description: form.description,
-      paid_amount: parseFloat(form.paid_amount),
-      actual_cost: parseFloat(form.actual_cost) || parseFloat(form.paid_amount),
-      vat: form.vat,
-      paid_by: form.paid_by,
-      category: form.category || "",
-      receipt_file: form.receipt_file,
-      receipt_url: form.receipt_file,
-      client_allocations: form.client_allocations,
-      receipt_code: receiptCode,
-      reimbursement_required: isReimbursementRequired(form.paid_by),
-      reimbursement_paid: false,
-      month,
-      year,
-      submitted_by: user?.email,
-      submitted_by_name: user?.full_name,
-      source: "manual",
-      currency: form.currency || "GBP",
-      original_amount: form.currency !== "GBP" ? parseFloat(form.original_amount) || null : null,
-      exchange_rate: form.currency !== "GBP" ? form.exchange_rate || null : null,
-    };
-
-    if (draftId) {
-      // Update the draft to confirmed
-      await base44.entities.Expense.update(draftId, {
-        ...expense,
-        status: 'confirmed',
-      });
-    } else {
-      await base44.entities.Expense.create(expense);
+      if (draftId) {
+        await base44.entities.Expense.update(draftId, { ...expense, status: 'confirmed' });
+      } else {
+        await base44.entities.Expense.create(expense);
+      }
+      setSuccess(receiptCode);
+    } catch (err) {
+      toast.error(err.message || "Failed to submit expense. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    setSuccess(receiptCode);
-    setSubmitting(false);
   };
 
   if (success) {

@@ -14,7 +14,7 @@ export default function Layout() {
     };
     window.addEventListener("popstate", handlePop);
     return () => window.removeEventListener("popstate", handlePop);
-  }, [navigate]);
+  }, []);
 
   return (
     <div className="min-h-screen flex bg-background">
