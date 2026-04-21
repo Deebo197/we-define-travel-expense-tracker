@@ -8,14 +8,19 @@ const UserNotRegisteredError = () => {
     if (notified.current) return;
     notified.current = true;
 
-    // Fire-and-forget: notify admin about this access attempt
     base44.auth.me().then(user => {
-      if (user?.email) {
-        base44.functions.invoke('notifyNewUserApproval', {
-          user_email: user.email,
-          user_name: user.full_name || '',
-        }).catch(err => console.error('Failed to send approval notification:', err));
-      }
+      if (!user?.email) return;
+
+      // Only send the notification once per email address (persisted in localStorage)
+      const storageKey = `approval_notified_${user.email}`;
+      if (localStorage.getItem(storageKey)) return;
+
+      base44.functions.invoke('notifyNewUserApproval', {
+        user_email: user.email,
+        user_name: user.full_name || '',
+      }).then(() => {
+        localStorage.setItem(storageKey, '1');
+      }).catch(err => console.error('Failed to send approval notification:', err));
     }).catch(() => {});
   }, []);
 
