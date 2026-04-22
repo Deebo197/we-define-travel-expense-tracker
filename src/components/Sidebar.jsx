@@ -5,6 +5,7 @@ import {
 "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
+import ProfileCodePicker from "@/components/ProfileCodePicker";
 
 const navItems = [
 { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
@@ -94,6 +95,7 @@ export default function Sidebar({ onClose }) {
               {user?.role === "admin" ? "Admin" : "Team Member"}
             </div>
           </div>
+          <ProfileCodePicker currentCode={user?.paid_by_code} />
           <button
             onClick={() => base44.auth.logout()}
             className="p-2 rounded-xl transition-all duration-200 active:scale-95"
