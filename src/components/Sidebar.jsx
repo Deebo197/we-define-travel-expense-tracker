@@ -32,7 +32,7 @@ export default function Sidebar({ onClose }) {
       {/* Logo */}
       <div className="p-5 flex items-center justify-between">
         <Link to={getHomePath()} className="flex items-center gap-3" onClick={onClose}>
-          <img src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/8c91e5cc1_repevo_logo_moonpay.svg"
+          <img src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/1b93c4387_repevo_transparent.png"
 
           alt="We Define Travel" className="h-16 w-auto object-contain" />
 
