@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import AnimatedPage from "@/components/AnimatedPage";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,21 +176,47 @@ export default function SubmitExpense() {
 
   if (success) {
     return (
-      <div className="max-w-md mx-auto text-center py-16">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="h-8 w-8 text-green-600" />
-        </div>
-        <h2 className="text-xl font-bold mb-2">Expense Submitted</h2>
-        <p className="text-muted-foreground mb-1">Receipt Code</p>
-        <p className="text-2xl font-bold text-primary mb-6">{success}</p>
-        <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
-          Submit Another
-        </Button>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        className="max-w-md mx-auto text-center py-16"
+      >
+        <motion.div
+          initial={{ scale: 0, rotate: -10 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ delay: 0.15, duration: 0.5, type: "spring", stiffness: 200, damping: 14 }}
+          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+          style={{ background: "linear-gradient(135deg, rgba(61,220,151,0.2), rgba(61,220,151,0.1))", border: "1px solid rgba(61,220,151,0.3)" }}
+        >
+          <CheckCircle2 className="h-10 w-10" style={{ color: "#3DDC97" }} />
+        </motion.div>
+        <motion.h2
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.35 }}
+          className="text-2xl font-semibold mb-2 text-white"
+          style={{ letterSpacing: "-0.02em" }}
+        >
+          Expense Submitted
+        </motion.h2>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.35 }}
+        >
+          <p className="text-sm mb-2" style={{ color: "#A1A1B5" }}>Receipt Code</p>
+          <p className="text-3xl font-bold tabular-nums mb-8" style={{ color: "#7F5BFF", letterSpacing: "-0.02em" }}>{success}</p>
+          <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
+            Submit Another
+          </Button>
+        </motion.div>
+      </motion.div>
     );
   }
 
   return (
+    <AnimatedPage>
     <div className="max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">
         {draftId ? 'Review & Confirm Expense' : 'Submit Expense'}
@@ -346,11 +374,18 @@ export default function SubmitExpense() {
         )}
 
         {/* Submit */}
-        <Button type="submit" className="w-full h-11" disabled={!canSubmit || submitting}>
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Submit Expense
-        </Button>
+        <motion.div
+          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: canSubmit && !submitting ? 1.01 : 1 }}
+          transition={{ duration: 0.15 }}
+        >
+          <Button type="submit" className="w-full h-11" disabled={!canSubmit || submitting}>
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Submit Expense
+          </Button>
+        </motion.div>
       </form>
     </div>
+    </AnimatedPage>
   );
 }

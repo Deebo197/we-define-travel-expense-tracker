@@ -1,7 +1,12 @@
 import { useState, useMemo } from "react";
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { motion } from "framer-motion";
+import AnimatedPage from "@/components/AnimatedPage";
+import { StaggerList, StaggerItem } from "@/components/StaggerList";
+import { SkeletonCard, SkeletonRow } from "@/components/SkeletonCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, AlertTriangle, ChevronRight } from "lucide-react";
@@ -21,6 +26,17 @@ const STAFF_OPTIONS = [
 
 export default function MyExpenses() {
   const navigate = useNavigate();
+  const heroRef = React.useRef(null);
+
+  const handleHeroMouseMove = (e) => {
+    const el = heroRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    el.style.setProperty("--mx", `${x}%`);
+    el.style.setProperty("--my", `${y}%`);
+  };
 
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
@@ -70,8 +86,13 @@ export default function MyExpenses() {
 
   if (isLoading || !user) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "#7F5BFF" }} />
+      <div className="space-y-6">
+        <div className="rounded-[20px] h-44 shimmer-line" style={{ background: "linear-gradient(90deg, rgba(127,91,255,0.2) 0%, rgba(127,91,255,0.35) 50%, rgba(127,91,255,0.2) 100%)", backgroundSize: "200% 100%", animation: "shimmer 1.8s linear infinite" }} />
+        <SkeletonCard />
+        <div className="rounded-[20px] overflow-hidden card-elevation" style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow />
+        </div>
+        <style>{`@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }`}</style>
       </div>
     );
   }
@@ -82,15 +103,25 @@ export default function MyExpenses() {
   const displayInitial = displayName.charAt(0);
 
   return (
+    <AnimatedPage>
     <div className="space-y-6">
 
       {/* Profile header card */}
-      <div
-        className="rounded-[20px] p-6 hero-glow card-elevation relative overflow-hidden"
+      <motion.div
+        ref={heroRef}
+        onMouseMove={handleHeroMouseMove}
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-[20px] p-6 card-elevation relative overflow-hidden"
         style={{
           background: "linear-gradient(135deg, #7F5BFF 0%, #6F3BFF 50%, #3A1DFF 100%)",
         }}
       >
+        <div
+          className="pointer-events-none absolute inset-0 rounded-[20px] opacity-60"
+          style={{ background: "radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.15) 0%, transparent 60%)" }}
+        />
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             {displayImage ? (
@@ -158,7 +189,7 @@ export default function MyExpenses() {
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Spend over time chart */}
       <div
@@ -181,10 +212,10 @@ export default function MyExpenses() {
               {drafts.length}
             </span>
           </div>
-          <div className="space-y-2">
+          <StaggerList className="space-y-2">
             {drafts.map(exp => (
+              <StaggerItem key={exp.id}>
               <button
-                key={exp.id}
                 onClick={() => navigate(`/submit-expense?draft_id=${exp.id}`)}
                 className="w-full text-left rounded-[14px] px-4 py-3 flex items-center justify-between gap-4 transition-all duration-200 active:scale-[0.99]"
                 style={{ backgroundColor: "rgba(255,181,71,0.08)", border: "1px solid rgba(255,181,71,0.2)" }}
@@ -204,8 +235,9 @@ export default function MyExpenses() {
                   <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: "#6C6C80" }} />
                 </div>
               </button>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         </div>
       )}
 
@@ -247,8 +279,11 @@ export default function MyExpenses() {
             <span className="text-center">Reimbursement</span>
           </div>
           {filtered.map((exp, idx) => (
-            <div
+            <motion.div
               key={exp.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
               onClick={() => setSelected(exp)}
               className="grid grid-cols-1 md:grid-cols-[100px_1fr_1fr_110px_130px] gap-1 md:gap-4 px-5 py-4 cursor-pointer transition-colors"
               style={{
@@ -271,7 +306,7 @@ export default function MyExpenses() {
               <div className="text-center">
                 <ReimbursementBadge required={exp.reimbursement_required} paid={exp.reimbursement_paid} />
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
@@ -330,6 +365,7 @@ export default function MyExpenses() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
+      </div>
+      </AnimatedPage>
+      );
+      }

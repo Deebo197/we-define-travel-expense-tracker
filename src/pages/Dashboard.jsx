@@ -1,8 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, TrendingUp, CreditCard, Receipt } from "lucide-react";
+import { motion } from "framer-motion";
+import AnimatedPage from "@/components/AnimatedPage";
+import { StaggerList, StaggerItem } from "@/components/StaggerList";
+import { SkeletonCard, SkeletonRow } from "@/components/SkeletonCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { formatCurrency, formatDateUK, getClientName, getPaidByLabel, CLIENT_CODES } from "@/lib/constants";
 import ReimbursementBadge from "../components/ReimbursementBadge";
@@ -64,6 +68,16 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const [period, setPeriod] = useState("this_month");
+  const heroRef = useRef(null);
+  const handleHeroMouseMove = (e) => {
+    const el = heroRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    el.style.setProperty("--mx", `${x}%`);
+    el.style.setProperty("--my", `${y}%`);
+  };
 
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ["allExpenses"],
@@ -108,8 +122,15 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "#7F5BFF" }} />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="shimmer-line w-32 h-8 rounded-xl" style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 100%)", backgroundSize: "200% 100%", animation: "shimmer 1.8s linear infinite" }} />
+        </div>
+        <div className="rounded-[20px] h-36 shimmer-line" style={{ background: "linear-gradient(90deg, rgba(127,91,255,0.15) 0%, rgba(127,91,255,0.3) 50%, rgba(127,91,255,0.15) 100%)", backgroundSize: "200% 100%", animation: "shimmer 1.8s linear infinite" }} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <SkeletonCard /><SkeletonCard /><SkeletonCard />
+        </div>
+        <style>{`@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }`}</style>
       </div>
     );
   }
@@ -117,6 +138,7 @@ export default function Dashboard() {
   const periodLabel = period === "this_month" ? "This Month" : period === "last_month" ? "Last Month" : "This Year";
 
   return (
+    <AnimatedPage>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -139,12 +161,18 @@ export default function Dashboard() {
       </div>
 
       {/* Hero balance card */}
-      <div
-        className="rounded-[20px] p-6 hero-glow card-elevation relative overflow-hidden"
+      <motion.div
+        ref={heroRef}
+        onMouseMove={handleHeroMouseMove}
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-[20px] p-6 card-elevation relative overflow-hidden"
         style={{
           background: "linear-gradient(135deg, #7F5BFF 0%, #6F3BFF 50%, #3A1DFF 100%)",
         }}
       >
+        <div className="pointer-events-none absolute inset-0 rounded-[20px] opacity-60" style={{ background: "radial-gradient(circle at var(--mx, 30%) var(--my, 50%), rgba(255,255,255,0.18) 0%, transparent 55%)" }} />
         <p className="text-sm font-medium mb-2" style={{ color: "rgba(255,255,255,0.8)" }}>
           Total spend — {periodLabel}
         </p>
@@ -157,35 +185,20 @@ export default function Dashboard() {
         <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.65)" }}>
           {periodExpenses.length} expenses across {clientSpend.length} clients
         </p>
-      </div>
+      </motion.div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          icon={TrendingUp}
-          iconBg="rgba(127,91,255,0.15)"
-          iconColor="#7F5BFF"
-          label="Total Spend"
-          value={formatCurrency(totalSpend)}
-          sub={`${periodLabel} — ${periodExpenses.length} expenses`}
-        />
-        <StatCard
-          icon={CreditCard}
-          iconBg="rgba(255,92,122,0.15)"
-          iconColor="#FF5C7A"
-          label="Pending Reimbursements"
-          value={formatCurrency(pendingReimb.reduce((s, e) => s + (e.paid_amount || 0), 0))}
-          sub={`${pendingReimb.length} items outstanding`}
-        />
-        <StatCard
-          icon={Receipt}
-          iconBg="rgba(61,220,151,0.15)"
-          iconColor="#3DDC97"
-          label="Expenses This Period"
-          value={periodExpenses.length.toString()}
-          sub={`${clientSpend.length} clients`}
-        />
-      </div>
+      <StaggerList className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StaggerItem>
+          <StatCard icon={TrendingUp} iconBg="rgba(127,91,255,0.15)" iconColor="#7F5BFF" label="Total Spend" value={formatCurrency(totalSpend)} sub={`${periodLabel} — ${periodExpenses.length} expenses`} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard icon={CreditCard} iconBg="rgba(255,92,122,0.15)" iconColor="#FF5C7A" label="Pending Reimbursements" value={formatCurrency(pendingReimb.reduce((s, e) => s + (e.paid_amount || 0), 0))} sub={`${pendingReimb.length} items outstanding`} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard icon={Receipt} iconBg="rgba(61,220,151,0.15)" iconColor="#3DDC97" label="Expenses This Period" value={periodExpenses.length.toString()} sub={`${clientSpend.length} clients`} />
+        </StaggerItem>
+      </StaggerList>
 
       {/* Charts and reimbursements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -268,38 +281,42 @@ export default function Dashboard() {
             Recent Expenses
           </h3>
         </div>
-        <div>
+        <StaggerList>
           {recentExpenses.map((exp, idx) => (
-            <div
-              key={exp.id}
-              className="flex items-center justify-between px-5 py-4 transition-colors"
-              style={{
-                borderBottom: idx < recentExpenses.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
-              }}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-medium" style={{ color: "#FFFFFF" }}>{formatDateUK(exp.date)}</span>
-                  <span className="text-xs" style={{ color: "#6C6C80" }}>by</span>
-                  <PersonAvatar code={exp.paid_by} size="xs" showName={true} />
+            <StaggerItem key={exp.id}>
+              <div
+                className="flex items-center justify-between px-5 py-4 transition-colors cursor-default"
+                style={{
+                  borderBottom: idx < recentExpenses.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-medium" style={{ color: "#FFFFFF" }}>{formatDateUK(exp.date)}</span>
+                    <span className="text-xs" style={{ color: "#6C6C80" }}>by</span>
+                    <PersonAvatar code={exp.paid_by} size="xs" showName={true} />
+                  </div>
+                  <p className="text-sm truncate" style={{ color: "#6C6C80" }}>{exp.description}</p>
                 </div>
-                <p className="text-sm truncate" style={{ color: "#6C6C80" }}>{exp.description}</p>
+                <div className="text-right ml-4">
+                  <div className="text-sm font-semibold tabular-nums" style={{ color: "#FFFFFF" }}>
+                    {formatCurrency(exp.paid_amount)}
+                  </div>
+                  <div className="text-xs" style={{ color: "#6C6C80" }}>
+                    {exp.client_allocations?.map(a => a.client_code).join(", ")}
+                  </div>
+                </div>
               </div>
-              <div className="text-right ml-4">
-                <div className="text-sm font-semibold tabular-nums" style={{ color: "#FFFFFF" }}>
-                  {formatCurrency(exp.paid_amount)}
-                </div>
-                <div className="text-xs" style={{ color: "#6C6C80" }}>
-                  {exp.client_allocations?.map(a => a.client_code).join(", ")}
-                </div>
-              </div>
-            </div>
+            </StaggerItem>
           ))}
           {recentExpenses.length === 0 && (
             <div className="py-10 text-center text-sm" style={{ color: "#6C6C80" }}>No expenses yet</div>
           )}
-        </div>
+        </StaggerList>
       </div>
     </div>
+    </AnimatedPage>
   );
 }
