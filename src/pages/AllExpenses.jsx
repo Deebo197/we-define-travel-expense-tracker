@@ -179,7 +179,7 @@ export default function AllExpenses() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            <th className="p-3 w-10 text-center">
+            <th className="p-3 w-10 text-center align-bottom pb-2">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] leading-tight">Select</span>
                 <Checkbox checked={selectedIds.length === filtered.length && filtered.length > 0} onCheckedChange={v => setSelectedIds(v ? filtered.map(e => e.id) : [])} />
@@ -208,7 +208,7 @@ export default function AllExpenses() {
           <tbody>
             {filtered.map(exp => (
             <tr key={exp.id} className={`border-t border-border hover:bg-muted/20 transition-colors ${selectedIds.includes(exp.id) ? "bg-primary/5" : ""}`}>
-              <td className="p-3">
+              <td className="p-3 text-center">
                 <Checkbox checked={selectedIds.includes(exp.id)} onCheckedChange={() => toggleSelectId(exp.id)} />
               </td>
               <td className="p-3 text-center">
