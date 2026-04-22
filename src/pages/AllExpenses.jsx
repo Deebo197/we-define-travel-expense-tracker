@@ -179,8 +179,20 @@ export default function AllExpenses() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            <th className="p-3 w-10"><Checkbox checked={selectedIds.length === filtered.length && filtered.length > 0} onCheckedChange={v => setSelectedIds(v ? filtered.map(e => e.id) : [])} /></th>
-            <th className="p-3 w-10"></th>
+            <th className="p-3 w-10 text-center">
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[10px] leading-tight">Select</span>
+                <Checkbox checked={selectedIds.length === filtered.length && filtered.length > 0} onCheckedChange={v => setSelectedIds(v ? filtered.map(e => e.id) : [])} />
+              </div>
+            </th>
+            <th className="p-3 w-14 text-center">
+              <span className="text-[10px] leading-tight text-emerald-400 block mb-1">Mark Paid</span>
+              <Checkbox
+                className="border-emerald-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 mx-auto"
+                checked={checked.length === filtered.filter(e => e.reimbursement_required && !e.reimbursement_paid).length && filtered.filter(e => e.reimbursement_required && !e.reimbursement_paid).length > 0}
+                onCheckedChange={v => setChecked(v ? filtered.filter(e => e.reimbursement_required && !e.reimbursement_paid).map(e => e.id) : [])}
+              />
+            </th>
               <th className="p-3 text-left">Date</th>
               <th className="p-3 text-left">Submitted By</th>
               <th className="p-3 text-left">Client(s)</th>
@@ -199,9 +211,10 @@ export default function AllExpenses() {
               <td className="p-3">
                 <Checkbox checked={selectedIds.includes(exp.id)} onCheckedChange={() => toggleSelectId(exp.id)} />
               </td>
-              <td className="p-3">
+              <td className="p-3 text-center">
                   {exp.reimbursement_required && !exp.reimbursement_paid && (
                     <Checkbox
+                      className="border-emerald-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 mx-auto"
                       checked={checked.includes(exp.id)}
                       onCheckedChange={() => toggleCheck(exp.id)}
                     />
