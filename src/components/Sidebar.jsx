@@ -95,7 +95,7 @@ export default function Sidebar({ onClose }) {
               {user?.role === "admin" ? "Admin" : "Team Member"}
             </div>
           </div>
-          <ProfileCodePicker currentCode={user?.paid_by_code} />
+          <ProfileCodePicker currentCode={user?.paid_by_code} currentPersonalCode={user?.paid_by_code_personal} />
           <button
             onClick={() => base44.auth.logout()}
             className="p-2 rounded-xl transition-all duration-200 active:scale-95"

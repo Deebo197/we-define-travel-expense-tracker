@@ -13,7 +13,11 @@
     },
     "paid_by_code": {
       "type": "string",
-      "title": "Paid By Code"
+      "title": "Paid By Code (Company Card / No Reimbursement)"
+    },
+    "paid_by_code_personal": {
+      "type": "string",
+      "title": "Paid By Code (Personal / Reimbursement Required)"
     }
   }
 }
