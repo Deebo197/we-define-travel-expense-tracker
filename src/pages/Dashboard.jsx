@@ -28,8 +28,8 @@ function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub }) {
     <div
       className="rounded-[20px] p-5 card-elevation"
       style={{
-        backgroundColor: "#14141B",
-        border: "1px solid rgba(255,255,255,0.06)",
+        backgroundColor: "var(--bg-surface)",
+        border: "1px solid var(--border-soft)",
       }}
     >
       <div className="flex items-center gap-3 mb-4">
@@ -39,10 +39,10 @@ function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub }) {
         >
           <Icon className="h-5 w-5" style={{ color: iconColor }} strokeWidth={1.75} />
         </div>
-        <span className="text-sm font-medium" style={{ color: "#A1A1B5" }}>{label}</span>
+        <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{label}</span>
       </div>
-      <p className="text-3xl font-semibold tabular-nums" style={{ color: "#FFFFFF", letterSpacing: "-0.02em" }}>{value}</p>
-      <p className="text-xs mt-1" style={{ color: "#6C6C80" }}>{sub}</p>
+      <p className="text-3xl font-semibold tabular-nums" style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{value}</p>
+      <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>{sub}</p>
     </div>
   );
 }
@@ -53,12 +53,12 @@ const CustomTooltip = ({ active, payload, label }) => {
       <div
         className="rounded-[14px] px-3 py-2 text-sm"
         style={{
-          backgroundColor: "#22222E",
-          border: "1px solid rgba(255,255,255,0.08)",
-          color: "#fff",
+          backgroundColor: "var(--bg-elevated)",
+          border: "1px solid var(--border-strong)",
+          color: "var(--text-primary)",
         }}
       >
-        <p style={{ color: "#A1A1B5" }}>{getClientName(label)}</p>
+        <p style={{ color: "var(--text-secondary)" }}>{getClientName(label)}</p>
         <p className="font-semibold tabular-nums">{formatCurrency(payload[0].value)}</p>
       </div>
     );
@@ -144,7 +144,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <h1
           className="text-[28px] font-semibold"
-          style={{ color: "#FFFFFF", letterSpacing: "-0.02em" }}
+          style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}
         >
           Dashboard
         </h1>
@@ -205,17 +205,17 @@ export default function Dashboard() {
         {/* Client spend chart */}
         <div
           className="rounded-[20px] p-5 card-elevation"
-          style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}
         >
-          <h3 className="font-semibold mb-4 text-[20px]" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+          <h3 className="font-semibold mb-4 text-[20px]" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
             Spend by Client
           </h3>
           {clientSpend.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={clientSpend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="code" tick={{ fontSize: 12, fill: "#6C6C80" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#6C6C80" }} tickFormatter={v => `£${v}`} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
+                <XAxis dataKey="code" tick={{ fontSize: 12, fill: "var(--text-tertiary)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "var(--text-tertiary)" }} tickFormatter={v => `£${v}`} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(127,91,255,0.06)" }} />
                 <Bar dataKey="amount" fill="url(#barGradient)" radius={[8, 8, 0, 0]} />
                 <defs>
@@ -227,16 +227,16 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-center py-10 text-sm" style={{ color: "#6C6C80" }}>No expenses in this period</p>
+            <p className="text-center py-10 text-sm" style={{ color: "var(--text-tertiary)" }}>No expenses in this period</p>
           )}
         </div>
 
         {/* Pending reimbursements */}
         <div
           className="rounded-[20px] p-5 card-elevation"
-          style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}
         >
-          <h3 className="font-semibold mb-4 text-[20px]" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+          <h3 className="font-semibold mb-4 text-[20px]" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
             Reimbursements Owed
           </h3>
           {reimbByPerson.length > 0 ? (
@@ -245,13 +245,13 @@ export default function Dashboard() {
                 <div
                   key={p.name}
                   className="flex items-center justify-between p-3 rounded-[14px] transition-colors"
-                  style={{ backgroundColor: "#1C1C26" }}
+                  style={{ backgroundColor: "var(--bg-surface-2)" }}
                 >
                   <div className="flex items-center gap-3">
                     <PersonAvatar code={p.code} size="sm" />
                     <div>
-                      <div className="font-medium text-sm" style={{ color: "#FFFFFF" }}>{p.name}</div>
-                      <div className="text-xs" style={{ color: "#6C6C80" }}>{p.count} items pending</div>
+                      <div className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>{p.name}</div>
+                      <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>{p.count} items pending</div>
                     </div>
                   </div>
                   <span className="text-lg font-semibold tabular-nums" style={{ color: "#7F5BFF" }}>
@@ -265,7 +265,7 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(61,220,151,0.1)" }}>
                 <Receipt className="h-5 w-5" style={{ color: "#3DDC97" }} strokeWidth={1.75} />
               </div>
-              <p className="text-sm" style={{ color: "#6C6C80" }}>All reimbursements settled</p>
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>All reimbursements settled</p>
             </div>
           )}
         </div>
@@ -274,10 +274,10 @@ export default function Dashboard() {
       {/* Recent expenses */}
       <div
         className="rounded-[20px] overflow-hidden card-elevation"
-        style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+        style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}
       >
-        <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <h3 className="font-semibold text-[20px]" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+        <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-soft)" }}>
+          <h3 className="font-semibold text-[20px]" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
             Recent Expenses
           </h3>
         </div>
@@ -287,24 +287,24 @@ export default function Dashboard() {
               <div
                 className="flex items-center justify-between px-5 py-4 transition-colors cursor-default"
                 style={{
-                  borderBottom: idx < recentExpenses.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  borderBottom: idx < recentExpenses.length - 1 ? "1px solid var(--border-soft)" : "none",
                 }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = "var(--bg-surface-2)"}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium" style={{ color: "#FFFFFF" }}>{formatDateUK(exp.date)}</span>
-                    <span className="text-xs" style={{ color: "#6C6C80" }}>by</span>
+                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{formatDateUK(exp.date)}</span>
+                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>by</span>
                     <PersonAvatar code={exp.paid_by} size="xs" showName={true} />
                   </div>
-                  <p className="text-sm truncate" style={{ color: "#6C6C80" }}>{exp.description}</p>
+                  <p className="text-sm truncate" style={{ color: "var(--text-tertiary)" }}>{exp.description}</p>
                 </div>
                 <div className="text-right ml-4">
-                  <div className="text-sm font-semibold tabular-nums" style={{ color: "#FFFFFF" }}>
+                  <div className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
                     {formatCurrency(exp.paid_amount)}
                   </div>
-                  <div className="text-xs" style={{ color: "#6C6C80" }}>
+                  <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                     {exp.client_allocations?.map(a => a.client_code).join(", ")}
                   </div>
                 </div>
@@ -312,7 +312,7 @@ export default function Dashboard() {
             </StaggerItem>
           ))}
           {recentExpenses.length === 0 && (
-            <div className="py-10 text-center text-sm" style={{ color: "#6C6C80" }}>No expenses yet</div>
+            <div className="py-10 text-center text-sm" style={{ color: "var(--text-tertiary)" }}>No expenses yet</div>
           )}
         </StaggerList>
       </div>

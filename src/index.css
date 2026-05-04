@@ -8,7 +8,7 @@
   :root {
     --font-inter: 'Inter', 'SF Pro Display', system-ui, sans-serif;
 
-    /* MoonPay-style dark tokens */
+    /* Dark theme (default) */
     --bg-base: #0B0B0F;
     --bg-surface: #14141B;
     --bg-surface-2: #1C1C26;
@@ -29,7 +29,7 @@
     --border-soft: rgba(255,255,255,0.06);
     --border-strong: rgba(255,255,255,0.12);
 
-    /* Shadcn token mappings */
+    /* Shadcn token mappings — dark */
     --background: 240 6% 5%;
     --foreground: 0 0% 100%;
     --card: 240 6% 10%;
@@ -66,6 +66,51 @@
     --chart-4: 348 100% 68%;
     --chart-5: 200 80% 55%;
   }
+
+  /* ── Light theme overrides ── */
+  [data-theme="light"] {
+    --bg-base: #F4F4F8;
+    --bg-surface: #FFFFFF;
+    --bg-surface-2: #F0F0F5;
+    --bg-elevated: #E8E8F0;
+
+    --text-primary: #0B0B1A;
+    --text-secondary: #3D3D55;
+    --text-tertiary: #7A7A96;
+
+    --border-soft: rgba(0,0,0,0.07);
+    --border-strong: rgba(0,0,0,0.14);
+
+    /* Shadcn token mappings — light */
+    --background: 240 10% 96%;
+    --foreground: 240 20% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 20% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 20% 8%;
+    --primary: 258 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 10% 94%;
+    --secondary-foreground: 240 20% 8%;
+    --muted: 240 10% 94%;
+    --muted-foreground: 240 10% 40%;
+    --accent: 240 10% 92%;
+    --accent-foreground: 240 20% 8%;
+    --destructive: 348 80% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 88%;
+    --input: 240 10% 88%;
+    --ring: 258 100% 60%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 40%;
+    --sidebar-primary: 258 100% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 10% 94%;
+    --sidebar-accent-foreground: 240 20% 8%;
+    --sidebar-border: 240 10% 88%;
+    --sidebar-ring: 258 100% 60%;
+  }
 }
 
 @layer base {
@@ -79,6 +124,7 @@
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   /* Tabular numbers everywhere money appears */
@@ -101,6 +147,9 @@
   .card-elevation {
     box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 24px 48px -24px rgba(0,0,0,0.6);
   }
+  [data-theme="light"] .card-elevation {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  }
   .hero-glow {
     position: relative;
     overflow: hidden;
@@ -111,5 +160,58 @@
     inset: 0;
     background: radial-gradient(120% 80% at 0% 0%, rgba(127,91,255,0.35), transparent 60%);
     pointer-events: none;
+  }
+
+  /* ── Theme-aware surface classes ── */
+  .theme-surface {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+  }
+  .theme-surface-2 {
+    background-color: var(--bg-surface-2);
+    color: var(--text-primary);
+  }
+  .theme-elevated {
+    background-color: var(--bg-elevated);
+  }
+  .theme-text-primary   { color: var(--text-primary); }
+  .theme-text-secondary { color: var(--text-secondary); }
+  .theme-text-tertiary  { color: var(--text-tertiary); }
+  .theme-border-soft    { border-color: var(--border-soft); }
+  .theme-border-strong  { border-color: var(--border-strong); }
+
+  /* Sidebar */
+  .theme-sidebar {
+    background-color: var(--bg-surface);
+    border-right: 1px solid var(--border-soft);
+    color: var(--text-primary);
+  }
+
+  /* Nav item hover */
+  .theme-nav-hover:hover {
+    background-color: var(--bg-surface-2);
+    color: var(--text-secondary);
+  }
+
+  /* Bottom nav */
+  .theme-bottom-nav {
+    background-color: var(--bg-surface);
+    border-top: 1px solid var(--border-soft);
+  }
+
+  /* Input / select fields */
+  .theme-input {
+    background-color: var(--bg-surface-2);
+    border-color: var(--border-soft);
+    color: var(--text-primary);
+  }
+
+  /* Icon buttons in sidebar */
+  .theme-icon-btn {
+    color: var(--text-tertiary);
+  }
+  .theme-icon-btn:hover {
+    color: #7F5BFF;
+    background-color: rgba(127,91,255,0.1);
   }
 }

@@ -28,7 +28,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="flex-1 min-w-0">
         {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-center px-4 py-3 border-b border-border bg-card">
+        <div className="lg:hidden flex items-center justify-center px-4 py-3 border-b border-border" style={{ backgroundColor: "var(--bg-surface)" }}>
           <img src="https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/1b93c4387_repevo_transparent.png"
 
           alt="We Define Travel" className="h-8 w-auto object-contain" />

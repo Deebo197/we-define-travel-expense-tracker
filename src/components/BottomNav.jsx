@@ -24,12 +24,8 @@ export default function BottomNav() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50"
-      style={{
-        backgroundColor: "#14141B",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        boxShadow: "0 -8px 32px rgba(0,0,0,0.4)",
-      }}
+      className="fixed bottom-0 left-0 right-0 z-50 theme-bottom-nav"
+      style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.15)" }}
     >
       <div className="overflow-x-auto scrollbar-none">
         <div className="flex items-stretch" style={{ minWidth: "max-content" }}>
@@ -42,7 +38,7 @@ export default function BottomNav() {
                 to={item.path}
                 className="flex flex-col items-center justify-center gap-1 px-4 py-3 min-w-[72px] transition-all duration-200 active:scale-95"
                 style={{
-                  color: isActive ? "#7F5BFF" : "#6C6C80",
+                  color: isActive ? "#7F5BFF" : "var(--text-tertiary)",
                   borderTop: isActive ? "2px solid #7F5BFF" : "2px solid transparent",
                   backgroundColor: isActive ? "rgba(127,91,255,0.06)" : "transparent",
                 }}

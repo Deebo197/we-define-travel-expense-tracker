@@ -194,7 +194,7 @@ export default function MyExpenses() {
       {/* Spend over time chart */}
       <div
         className="rounded-[20px] p-5 card-elevation"
-        style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+        style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}
       >
         <h3 className="font-semibold text-[18px] mb-4" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
           Spend Over Time
@@ -268,10 +268,10 @@ export default function MyExpenses() {
       ) : (
         <div
           className="rounded-[20px] overflow-hidden card-elevation"
-          style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}
         >
           <div className="hidden md:grid grid-cols-[100px_1fr_1fr_110px_130px] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#6C6C80", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            style={{ color: "var(--text-tertiary)", borderBottom: "1px solid var(--border-soft)" }}>
             <span>Date</span>
             <span>Client(s)</span>
             <span>Description</span>

@@ -13,8 +13,9 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-[52px] w-full items-center justify-between whitespace-nowrap rounded-[14px] border border-[rgba(255,255,255,0.06)] bg-[#1C1C26] px-4 py-2 text-base text-white shadow-sm transition-all duration-200",
-      "placeholder:text-[#6C6C80] data-[placeholder]:text-[#6C6C80]",
+      "flex h-[52px] w-full items-center justify-between whitespace-nowrap rounded-[14px] border px-4 py-2 text-base shadow-sm transition-all duration-200",
+      "bg-[var(--bg-surface-2)] border-[var(--border-soft)] text-[var(--text-primary)]",
+      "placeholder:text-[var(--text-tertiary)] data-[placeholder]:text-[var(--text-tertiary)]",
       "focus:outline-none focus:border-[#7F5BFF] focus:shadow-[0_0_0_4px_rgba(127,91,255,0.15)]",
       "disabled:cursor-not-allowed disabled:opacity-40 [&>span]:line-clamp-1",
       className
@@ -53,7 +54,8 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[#22222E] text-white shadow-[0_24px_48px_-24px_rgba(0,0,0,0.8)] backdrop-blur-sm",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[20px] shadow-[0_16px_48px_rgba(0,0,0,0.25)] backdrop-blur-sm",
+        "bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-[var(--text-primary)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         "data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
@@ -84,7 +86,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-[10px] py-2.5 pl-3 pr-8 text-sm text-[#A1A1B5] outline-none transition-colors",
+      "relative flex w-full cursor-default select-none items-center rounded-[10px] py-2.5 pl-3 pr-8 text-sm outline-none transition-colors text-[var(--text-secondary)]",
       "focus:bg-[rgba(127,91,255,0.12)] focus:text-white",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className
