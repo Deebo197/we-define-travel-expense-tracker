@@ -2,15 +2,15 @@ import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, TrendingUp, CreditCard, Receipt } from "lucide-react";
+import { TrendingUp, CreditCard, Receipt, AlertTriangle, FileX, RefreshCw, Tag, Clock, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import AnimatedPage from "@/components/AnimatedPage";
 import { StaggerList, StaggerItem } from "@/components/StaggerList";
 import { SkeletonCard, SkeletonRow } from "@/components/SkeletonCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { formatCurrency, formatDateUK, getClientName, getPaidByLabel, CLIENT_CODES } from "@/lib/constants";
-import ReimbursementBadge from "../components/ReimbursementBadge";
 import PersonAvatar from "../components/PersonAvatar";
+import ExpenseStatusBadge from "../components/ExpenseStatusBadge";
 
 function getMonthRange(filter) {
   const now = new Date();
@@ -120,6 +120,24 @@ export default function Dashboard() {
 
   const recentExpenses = useMemo(() => expenses.slice(0, 10), [expenses]);
 
+  // Needs Attention data (all-time, not period-filtered)
+  const draftExpenses = useMemo(() => expenses.filter(e => e.status === "draft"), [expenses]);
+  const missingReceipts = useMemo(() => expenses.filter(e => e.status !== "draft" && !e.receipt_file && !e.receipt_url), [expenses]);
+  const syncFailed = useMemo(() => expenses.filter(e => e.drive_sync_failed), [expenses]);
+  const uncategorised = useMemo(() => expenses.filter(e => e.status !== "draft" && !e.category), [expenses]);
+
+  const attentionItems = useMemo(() => {
+    // Combine and deduplicate by id, most recent first
+    const seen = new Set();
+    const items = [...draftExpenses, ...missingReceipts, ...syncFailed, ...uncategorised]
+      .filter(e => { if (seen.has(e.id)) return false; seen.add(e.id); return true; })
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 8);
+    return items;
+  }, [draftExpenses, missingReceipts, syncFailed, uncategorised]);
+
+  const pendingReimbTotal = pendingReimb.reduce((s, e) => s + (e.paid_amount || 0), 0);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -199,6 +217,104 @@ export default function Dashboard() {
           <StatCard icon={Receipt} iconBg="rgba(61,220,151,0.15)" iconColor="#3DDC97" label="Expenses This Period" value={periodExpenses.length.toString()} sub={`${clientSpend.length} clients`} />
         </StaggerItem>
       </StaggerList>
+
+      {/* Needs Attention panel */}
+      <div className="rounded-[20px] p-5 card-elevation" style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}>
+        <h3 className="font-semibold text-[20px] mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+          Needs Attention
+        </h3>
+
+        {draftExpenses.length === 0 && missingReceipts.length === 0 && syncFailed.length === 0 && uncategorised.length === 0 && pendingReimb.length === 0 ? (
+          <div className="flex items-center gap-3 py-4">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(61,220,151,0.12)" }}>
+              <CheckCircle2 className="h-5 w-5" style={{ color: "#3DDC97" }} strokeWidth={1.75} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "#3DDC97" }}>Everything looks tidy</p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>No outstanding actions right now.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Action tiles */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+              {draftExpenses.length > 0 && (
+                <div className="rounded-[14px] p-3" style={{ backgroundColor: "rgba(255,181,71,0.08)", border: "1px solid rgba(255,181,71,0.18)" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: "rgba(255,181,71,0.15)" }}>
+                    <Clock className="h-4 w-4" style={{ color: "#FFB547" }} strokeWidth={1.75} />
+                  </div>
+                  <p className="text-xl font-semibold tabular-nums" style={{ color: "#FFB547" }}>{draftExpenses.length}</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: "#FFB547" }}>Drafts</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Awaiting review</p>
+                </div>
+              )}
+              {missingReceipts.length > 0 && (
+                <div className="rounded-[14px] p-3" style={{ backgroundColor: "rgba(255,92,122,0.08)", border: "1px solid rgba(255,92,122,0.18)" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: "rgba(255,92,122,0.15)" }}>
+                    <FileX className="h-4 w-4" style={{ color: "#FF5C7A" }} strokeWidth={1.75} />
+                  </div>
+                  <p className="text-xl font-semibold tabular-nums" style={{ color: "#FF5C7A" }}>{missingReceipts.length}</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: "#FF5C7A" }}>Missing Receipts</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>No file attached</p>
+                </div>
+              )}
+              {pendingReimb.length > 0 && (
+                <div className="rounded-[14px] p-3" style={{ backgroundColor: "rgba(127,91,255,0.08)", border: "1px solid rgba(127,91,255,0.18)" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: "rgba(127,91,255,0.15)" }}>
+                    <CreditCard className="h-4 w-4" style={{ color: "#7F5BFF" }} strokeWidth={1.75} />
+                  </div>
+                  <p className="text-base font-semibold tabular-nums leading-tight" style={{ color: "#7F5BFF" }}>{formatCurrency(pendingReimbTotal)}</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: "#7F5BFF" }}>Reimbursements</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{pendingReimb.length} outstanding</p>
+                </div>
+              )}
+              {syncFailed.length > 0 && (
+                <div className="rounded-[14px] p-3" style={{ backgroundColor: "rgba(255,92,122,0.08)", border: "1px solid rgba(255,92,122,0.18)" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: "rgba(255,92,122,0.15)" }}>
+                    <RefreshCw className="h-4 w-4" style={{ color: "#FF5C7A" }} strokeWidth={1.75} />
+                  </div>
+                  <p className="text-xl font-semibold tabular-nums" style={{ color: "#FF5C7A" }}>{syncFailed.length}</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: "#FF5C7A" }}>Sync Failed</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Drive upload errors</p>
+                </div>
+              )}
+              {uncategorised.length > 0 && (
+                <div className="rounded-[14px] p-3" style={{ backgroundColor: "rgba(161,161,181,0.08)", border: "1px solid rgba(161,161,181,0.14)" }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: "rgba(161,161,181,0.12)" }}>
+                    <Tag className="h-4 w-4" style={{ color: "#A1A1B5" }} strokeWidth={1.75} />
+                  </div>
+                  <p className="text-xl font-semibold tabular-nums" style={{ color: "var(--text-secondary)" }}>{uncategorised.length}</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: "var(--text-secondary)" }}>Uncategorised</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>No category set</p>
+                </div>
+              )}
+            </div>
+
+            {/* Recent items needing attention */}
+            {attentionItems.length > 0 && (
+              <div className="rounded-[14px] overflow-hidden" style={{ border: "1px solid var(--border-soft)" }}>
+                <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)", backgroundColor: "var(--bg-surface-2)", borderBottom: "1px solid var(--border-soft)" }}>
+                  Items needing attention
+                </div>
+                {attentionItems.map((exp, idx) => (
+                  <div
+                    key={exp.id}
+                    className="flex items-center gap-3 px-4 py-3 transition-colors"
+                    style={{ borderBottom: idx < attentionItems.length - 1 ? "1px solid var(--border-soft)" : "none" }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = "var(--bg-surface-2)"}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    <span className="text-xs flex-shrink-0 w-20" style={{ color: "var(--text-tertiary)" }}>{formatDateUK(exp.date)}</span>
+                    <p className="text-sm flex-1 truncate" style={{ color: "var(--text-secondary)" }}>{exp.description}</p>
+                    <ExpenseStatusBadge expense={exp} />
+                    <span className="text-sm font-semibold tabular-nums flex-shrink-0" style={{ color: "var(--text-primary)" }}>{formatCurrency(exp.paid_amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Charts and reimbursements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -300,12 +416,17 @@ export default function Dashboard() {
                   </div>
                   <p className="text-sm truncate" style={{ color: "var(--text-tertiary)" }}>{exp.description}</p>
                 </div>
-                <div className="text-right ml-4">
-                  <div className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                    {formatCurrency(exp.paid_amount)}
+                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                  <div className="hidden sm:block">
+                    <ExpenseStatusBadge expense={exp} />
                   </div>
-                  <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    {exp.client_allocations?.map(a => a.client_code).join(", ")}
+                  <div className="text-right">
+                    <div className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                      {formatCurrency(exp.paid_amount)}
+                    </div>
+                    <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                      {exp.client_allocations?.map(a => a.client_code).join(", ")}
+                    </div>
                   </div>
                 </div>
               </div>
