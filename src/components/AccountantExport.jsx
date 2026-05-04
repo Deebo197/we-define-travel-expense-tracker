@@ -4,8 +4,9 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, Loader2, FileSpreadsheet, FileText } from "lucide-react";
+import { Loader2, FileSpreadsheet, FileText } from "lucide-react";
 import { formatCurrency, formatDateUK, getClientName, getPaidByLabel, CLIENT_CODES, COMPANY_INFO } from "@/lib/constants";
+import MonthEndReadiness from "./MonthEndReadiness";
 
 export default function AccountantExport() {
   const [dateFrom, setDateFrom] = useState("");
@@ -203,6 +204,8 @@ export default function AccountantExport() {
   const overallTotal = filtered.reduce((s, e) => s + (e.paid_amount || 0), 0);
 
   return (
+    <div className="space-y-4">
+    <MonthEndReadiness expenses={filtered} />
     <div className="bg-card rounded-xl border border-border p-5">
       <h3 className="font-semibold mb-4">Export for Accountant</h3>
 
@@ -228,6 +231,7 @@ export default function AccountantExport() {
           Full Accountant PDF
         </Button>
       </div>
+    </div>
     </div>
   );
 }
