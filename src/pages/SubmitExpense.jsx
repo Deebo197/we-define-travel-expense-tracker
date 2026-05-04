@@ -196,8 +196,7 @@ export default function SubmitExpense() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.35 }}
           className="text-2xl font-semibold mb-2"
-          style={{ color: "var(--text-primary)" }}
-          style={{ letterSpacing: "-0.02em" }}
+          style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}
         >
           Expense Submitted
         </motion.h2>
