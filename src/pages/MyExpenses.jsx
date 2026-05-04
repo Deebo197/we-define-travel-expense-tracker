@@ -89,7 +89,7 @@ export default function MyExpenses() {
       <div className="space-y-6">
         <div className="rounded-[20px] h-44 shimmer-line" style={{ background: "linear-gradient(90deg, rgba(127,91,255,0.2) 0%, rgba(127,91,255,0.35) 50%, rgba(127,91,255,0.2) 100%)", backgroundSize: "200% 100%", animation: "shimmer 1.8s linear infinite" }} />
         <SkeletonCard />
-        <div className="rounded-[20px] overflow-hidden card-elevation" style={{ backgroundColor: "#14141B", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="rounded-[20px] overflow-hidden card-elevation" style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}>
           <SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow />
         </div>
         <style>{`@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }`}</style>
@@ -196,7 +196,7 @@ export default function MyExpenses() {
         className="rounded-[20px] p-5 card-elevation"
         style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}
       >
-        <h3 className="font-semibold text-[18px] mb-4" style={{ color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+        <h3 className="font-semibold text-[18px] mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
           Spend Over Time
         </h3>
         <ExpenseSpendChart expenses={confirmed} />
@@ -226,13 +226,13 @@ export default function MyExpenses() {
                     Action Required
                   </span>
                   <div>
-                    <p className="text-sm font-medium text-white">{exp.description}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#6C6C80" }}>{formatDateUK(exp.date)}</p>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{exp.description}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{formatDateUK(exp.date)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">{formatCurrency(exp.paid_amount)}</span>
-                  <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: "#6C6C80" }} />
+                  <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{formatCurrency(exp.paid_amount)}</span>
+                  <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: "var(--text-tertiary)" }} />
                 </div>
               </button>
               </StaggerItem>
@@ -261,8 +261,8 @@ export default function MyExpenses() {
 
       {/* Expense list */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16" style={{ color: "#6C6C80" }}>
-          <p className="text-lg font-medium text-white">No expenses found</p>
+        <div className="text-center py-16" style={{ color: "var(--text-tertiary)" }}>
+          <p className="text-lg font-medium" style={{ color: "var(--text-primary)" }}>No expenses found</p>
           <p className="text-sm mt-1">Submit your first expense to see it here</p>
         </div>
       ) : (
@@ -287,20 +287,20 @@ export default function MyExpenses() {
               onClick={() => setSelected(exp)}
               className="grid grid-cols-1 md:grid-cols-[100px_1fr_1fr_110px_130px] gap-1 md:gap-4 px-5 py-4 cursor-pointer transition-colors"
               style={{
-                borderBottom: idx < filtered.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-soft)" : "none",
               }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.03)"}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = "var(--bg-surface-2)"}
               onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
             >
-              <span className="text-sm font-medium" style={{ color: "#FFFFFF" }}>{formatDateUK(exp.date)}</span>
-              <span className="text-sm" style={{ color: "#6C6C80" }}>
+              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{formatDateUK(exp.date)}</span>
+              <span className="text-sm" style={{ color: "var(--text-tertiary)" }}>
                 {exp.client_allocations?.map(a => a.client_code).join(", ")}
               </span>
-              <span className="text-sm truncate" style={{ color: "#A1A1B5" }}>{exp.description}</span>
+              <span className="text-sm truncate" style={{ color: "var(--text-secondary)" }}>{exp.description}</span>
               <div className="text-right">
-                <span className="text-sm font-semibold tabular-nums" style={{ color: "#FFFFFF" }}>{formatCurrency(exp.paid_amount)}</span>
+                <span className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{formatCurrency(exp.paid_amount)}</span>
                 {exp.currency && exp.currency !== "GBP" && exp.original_amount && (
-                  <div className="text-xs" style={{ color: "#6C6C80" }}>{formatForeignCurrency(exp.original_amount, exp.currency)}</div>
+                  <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>{formatForeignCurrency(exp.original_amount, exp.currency)}</div>
                 )}
               </div>
               <div className="text-center">

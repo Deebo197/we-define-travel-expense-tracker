@@ -8,16 +8,16 @@ const CustomTooltip = ({ active, payload, label }) => {
       <div
         className="rounded-[14px] px-4 py-3 text-sm"
         style={{
-          backgroundColor: "#22222E",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+          backgroundColor: "var(--bg-elevated)",
+          border: "1px solid var(--border-strong)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
         }}
       >
-        <p className="font-medium mb-1" style={{ color: "#A1A1B5" }}>{label}</p>
-        <p className="text-lg font-semibold tabular-nums" style={{ color: "#FFFFFF" }}>
+        <p className="font-medium mb-1" style={{ color: "var(--text-secondary)" }}>{label}</p>
+        <p className="text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
           {formatCurrency(payload[0].value)}
         </p>
-        <p className="text-xs mt-0.5" style={{ color: "#6C6C80" }}>
+        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
           {payload[0].payload.count} expense{payload[0].payload.count !== 1 ? "s" : ""}
         </p>
       </div>
@@ -46,7 +46,7 @@ export default function ExpenseSpendChart({ expenses }) {
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48" style={{ color: "#6C6C80" }}>
+      <div className="flex items-center justify-center h-48" style={{ color: "var(--text-tertiary)" }}>
         <p className="text-sm">No expense data to display yet</p>
       </div>
     );
@@ -61,15 +61,15 @@ export default function ExpenseSpendChart({ expenses }) {
             <stop offset="100%" stopColor="#7F5BFF" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
         <XAxis
           dataKey="month"
-          tick={{ fontSize: 11, fill: "#6C6C80" }}
+          tick={{ fontSize: 11, fill: "var(--text-tertiary)" }}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "#6C6C80" }}
+          tick={{ fontSize: 11, fill: "var(--text-tertiary)" }}
           tickFormatter={v => `£${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
           axisLine={false}
           tickLine={false}

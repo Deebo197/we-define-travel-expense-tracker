@@ -195,7 +195,8 @@ export default function SubmitExpense() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.35 }}
-          className="text-2xl font-semibold mb-2 text-white"
+          className="text-2xl font-semibold mb-2"
+          style={{ color: "var(--text-primary)" }}
           style={{ letterSpacing: "-0.02em" }}
         >
           Expense Submitted
@@ -205,7 +206,7 @@ export default function SubmitExpense() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.35 }}
         >
-          <p className="text-sm mb-2" style={{ color: "#A1A1B5" }}>Receipt Code</p>
+          <p className="text-sm mb-2" style={{ color: "var(--text-secondary)" }}>Receipt Code</p>
           <p className="text-3xl font-bold tabular-nums mb-8" style={{ color: "#7F5BFF", letterSpacing: "-0.02em" }}>{success}</p>
           <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
             Submit Another
