@@ -4,6 +4,7 @@ import {
   CreditCard, FileText, MapPin, Building2
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const navItems = [
   { path: "/dashboard",      label: "Dashboard",    icon: LayoutDashboard, adminOnly: true },
@@ -50,6 +51,9 @@ export default function BottomNav() {
               </Link>
             );
           })}
+          <div className="flex flex-col items-center justify-center gap-1 px-4 py-3 min-w-[72px]">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </div>
