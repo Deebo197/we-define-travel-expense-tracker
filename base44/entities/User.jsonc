@@ -19,5 +19,9 @@
       "type": "string",
       "title": "Paid By Code (Personal / Reimbursement Required)"
     }
-  }
+  },
+  "required": [
+    "paid_by_code",
+    "paid_by_code_personal"
+  ]
 }

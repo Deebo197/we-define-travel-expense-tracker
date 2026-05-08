@@ -10,7 +10,7 @@ import { SkeletonCard, SkeletonRow } from "@/components/SkeletonCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ChevronRight, PlusCircle, FileX, RefreshCw } from "lucide-react";
+import { AlertTriangle, ChevronRight, PlusCircle, FileX, RefreshCw, Inbox } from "lucide-react";
 import CategoryBadge from "../components/CategoryBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import ExpenseSpendChart from "../components/ExpenseSpendChart";
@@ -69,6 +69,15 @@ export default function MyExpenses() {
 
   const targetCode = isAdmin && viewingCode ? viewingCode : user?.paid_by_code || null;
   const targetPerson = targetCode ? PERSON_AVATARS[targetCode] : null;
+
+  const { data: myInboxItems = [] } = useQuery({
+    queryKey: ["myInboxItems", user?.email],
+    queryFn: () => base44.entities.ReceiptInboxItem.filter({ owner_email: user.email }, "-created_date", 50),
+    enabled: !!user,
+  });
+
+  const inboxNeedsReview = myInboxItems.filter(i => i.status === "needs_review").length;
+  const inboxFailed = myInboxItems.filter(i => i.status === "failed").length;
 
   const { data: allExpenses = [], isLoading } = useQuery({
     queryKey: ["myExpenses", user?.email, targetCode],
@@ -210,6 +219,36 @@ export default function MyExpenses() {
           </div>
         </div>
       </motion.div>
+
+      {/* Receipt Inbox nudge */}
+      {(inboxNeedsReview > 0 || inboxFailed > 0) && (
+        <Link to="/receipt-inbox">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-[20px] px-5 py-4 flex items-center gap-3 cursor-pointer"
+            style={{ backgroundColor: "rgba(127,91,255,0.08)", border: "1px solid rgba(127,91,255,0.2)" }}
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: "rgba(127,91,255,0.15)" }}
+            >
+              <Inbox className="h-4 w-4" style={{ color: "#7F5BFF" }} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Receipt Inbox</p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                {[
+                  inboxNeedsReview > 0 && `${inboxNeedsReview} receipt${inboxNeedsReview > 1 ? "s" : ""} ready to review`,
+                  inboxFailed > 0 && `${inboxFailed} failed — needs manual entry`,
+                ].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: "#7F5BFF" }} />
+          </motion.div>
+        </Link>
+      )}
 
       {/* Action list */}
       {showActionList && (

@@ -131,8 +131,7 @@ export default function SubmitExpense() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      const primaryClient = form.client_allocations[0].client_code;
-      const receiptCode = await generateReceiptCode(primaryClient, form.date);
+      const receiptCode = await generateReceiptCode(form.date);
       const dateObj = new Date(form.date);
       const month = formatMonth(form.date);
       const year = dateObj.getFullYear();

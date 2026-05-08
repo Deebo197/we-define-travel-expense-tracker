@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, PlusCircle, Receipt, List,
-  CreditCard, FileText, MapPin, Building2, X, LogOut } from
+  CreditCard, FileText, MapPin, Building2, X, LogOut, Inbox } from
 "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -15,6 +15,7 @@ const navItems = [
 { path: "/all-expenses", label: "All Expenses", icon: List, adminOnly: true },
 { path: "/reimbursements", label: "Reimbursements", icon: CreditCard, adminOnly: true },
 { path: "/client-report", label: "Client Report", icon: FileText, adminOnly: true },
+{ path: "/receipt-inbox", label: "Receipt Inbox", icon: Inbox, adminOnly: false },
 { path: "/mileage-log", label: "Mileage Log", icon: MapPin, adminOnly: false },
 { path: "/accounts", label: "Accounts", icon: Building2, adminOnly: true }];
 

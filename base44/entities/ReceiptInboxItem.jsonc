@@ -1,0 +1,184 @@
+{
+  "name": "ReceiptInboxItem",
+  "type": "object",
+  "properties": {
+    "receipt_code": {
+      "type": "string",
+      "title": "Receipt Code"
+    },
+    "owner_email": {
+      "type": "string",
+      "title": "Owner Email"
+    },
+    "owner_name": {
+      "type": "string",
+      "title": "Owner Name"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "inbox",
+        "processing",
+        "needs_review",
+        "confirmed",
+        "failed"
+      ],
+      "default": "inbox"
+    },
+    "source": {
+      "type": "string",
+      "title": "Source",
+      "enum": [
+        "bulk_upload",
+        "camera",
+        "manual_upload"
+      ],
+      "default": "manual_upload"
+    },
+    "file_url": {
+      "type": "string",
+      "title": "File URL"
+    },
+    "public_receipt_url": {
+      "type": "string",
+      "title": "Public Receipt URL"
+    },
+    "drive_file_id": {
+      "type": "string",
+      "title": "Drive File ID"
+    },
+    "drive_folder_path": {
+      "type": "string",
+      "title": "Drive Folder Path"
+    },
+    "original_filename": {
+      "type": "string",
+      "title": "Original Filename"
+    },
+    "mime_type": {
+      "type": "string",
+      "title": "MIME Type"
+    },
+    "extracted_date": {
+      "type": "string",
+      "title": "Extracted Date"
+    },
+    "extracted_supplier": {
+      "type": "string",
+      "title": "Extracted Supplier"
+    },
+    "extracted_description": {
+      "type": "string",
+      "title": "Extracted Description"
+    },
+    "extracted_amount": {
+      "type": "number",
+      "title": "Extracted Amount"
+    },
+    "extracted_vat": {
+      "type": "boolean",
+      "title": "Extracted VAT",
+      "default": false
+    },
+    "extracted_currency": {
+      "type": "string",
+      "title": "Extracted Currency",
+      "default": "GBP"
+    },
+    "ocr_confidence": {
+      "type": "number",
+      "title": "OCR Confidence"
+    },
+    "ocr_error": {
+      "type": "string",
+      "title": "OCR Error"
+    },
+    "paid_by": {
+      "type": "string",
+      "title": "Paid By"
+    },
+    "category": {
+      "type": "string",
+      "title": "Category"
+    },
+    "client_allocations": {
+      "type": "array",
+      "title": "Client Allocations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "client_code": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "linked_expense_id": {
+      "type": "string",
+      "title": "Linked Expense ID"
+    },
+    "month": {
+      "type": "string",
+      "title": "Month"
+    },
+    "year": {
+      "type": "number",
+      "title": "Year"
+    }
+  },
+  "required": [
+    "receipt_code",
+    "owner_email",
+    "file_url",
+    "status"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
+}

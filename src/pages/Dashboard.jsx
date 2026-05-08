@@ -2,7 +2,8 @@ import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, CreditCard, Receipt, AlertTriangle, FileX, RefreshCw, Tag, Clock, CheckCircle2 } from "lucide-react";
+import { TrendingUp, CreditCard, Receipt, AlertTriangle, FileX, RefreshCw, Tag, Clock, CheckCircle2, Inbox } from "lucide-react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import AnimatedPage from "@/components/AnimatedPage";
 import { StaggerList, StaggerItem } from "@/components/StaggerList";
@@ -83,6 +84,15 @@ export default function Dashboard() {
     queryKey: ["allExpenses"],
     queryFn: () => base44.entities.Expense.list("-date", 500),
   });
+
+  const { data: inboxItems = [] } = useQuery({
+    queryKey: ["inboxSummary"],
+    queryFn: () => base44.entities.ReceiptInboxItem.list("-created_date", 100),
+  });
+
+  const inboxNeedsReview = inboxItems.filter(i => i.status === "needs_review").length;
+  const inboxFailed = inboxItems.filter(i => i.status === "failed").length;
+  const inboxProcessing = inboxItems.filter(i => i.status === "processing" || i.status === "inbox").length;
 
   const range = getMonthRange(period);
   const periodExpenses = useMemo(() =>
@@ -223,6 +233,41 @@ export default function Dashboard() {
         <h3 className="font-semibold text-[20px] mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
           Needs Attention
         </h3>
+
+        {/* Receipt Inbox panel */}
+        {(inboxNeedsReview > 0 || inboxFailed > 0 || inboxProcessing > 0) && (
+          <Link to="/receipt-inbox" className="block mb-5">
+            <div
+              className="flex items-center gap-4 px-4 py-3.5 rounded-[14px] transition-all duration-200"
+              style={{
+                backgroundColor: inboxNeedsReview > 0 ? "rgba(255,181,71,0.08)" : "rgba(127,91,255,0.06)",
+                border: `1px solid ${inboxNeedsReview > 0 ? "rgba(255,181,71,0.2)" : "rgba(127,91,255,0.2)"}`,
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "0.8"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: inboxNeedsReview > 0 ? "rgba(255,181,71,0.15)" : "rgba(127,91,255,0.12)" }}
+              >
+                <Inbox className="h-4 w-4" style={{ color: inboxNeedsReview > 0 ? "#FFB547" : "#7F5BFF" }} strokeWidth={1.75} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Receipt Inbox</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  {[
+                    inboxNeedsReview > 0 && `${inboxNeedsReview} need${inboxNeedsReview === 1 ? "s" : ""} review`,
+                    inboxFailed > 0 && `${inboxFailed} failed`,
+                    inboxProcessing > 0 && `${inboxProcessing} processing`,
+                  ].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              <span className="text-xs font-semibold" style={{ color: inboxNeedsReview > 0 ? "#FFB547" : "#7F5BFF" }}>
+                Review →
+              </span>
+            </div>
+          </Link>
+        )}
 
         {draftExpenses.length === 0 && missingReceipts.length === 0 && syncFailed.length === 0 && uncategorised.length === 0 && pendingReimb.length === 0 ? (
           <div className="flex items-center gap-3 py-4">
