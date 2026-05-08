@@ -1,0 +1,19 @@
+{
+  "name": "ReceiptCodeCounter",
+  "type": "object",
+  "properties": {
+    "date_key": {
+      "type": "string",
+      "title": "Date Key (YYMMDD)"
+    },
+    "last_sequence": {
+      "type": "number",
+      "title": "Last Sequence Number",
+      "default": 0
+    }
+  },
+  "required": [
+    "date_key",
+    "last_sequence"
+  ]
+}

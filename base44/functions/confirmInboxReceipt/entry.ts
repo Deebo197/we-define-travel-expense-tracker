@@ -3,19 +3,14 @@
  *
  * POST body: {
  *   inbox_item_id: string,
- *   // All user-edited fields:
- *   date: string,
- *   description: string,
- *   paid_amount: number,
- *   actual_cost: number,
- *   vat: boolean,
- *   paid_by: string,
- *   category: string,
- *   client_allocations: array,
- *   currency: string,
- *   original_amount: number|null,
- *   exchange_rate: number|null
+ *   date, description, paid_amount, actual_cost, vat, paid_by,
+ *   category, client_allocations, currency, original_amount, exchange_rate
  * }
+ *
+ * Security:
+ *   - Requires authenticated user
+ *   - Allows if user.role === "admin" OR item.owner_email === user.email
+ *   - Idempotent: if item is already confirmed, returns the existing expense
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
@@ -57,17 +52,44 @@ async function getOrCreateCachedFolder(base44, authHeader, name, parentFolderId)
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    // --- Auth ---
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = await req.json();
-    const { inbox_item_id, date, description, paid_amount, actual_cost, vat, paid_by, category, client_allocations, currency, original_amount, exchange_rate } = payload;
+    const {
+      inbox_item_id, date, description, paid_amount, actual_cost,
+      vat, paid_by, category, client_allocations, currency,
+      original_amount, exchange_rate,
+    } = payload;
 
     if (!inbox_item_id) return Response.json({ error: 'inbox_item_id required' }, { status: 400 });
 
+    // --- Fetch item ---
     const items = await base44.asServiceRole.entities.ReceiptInboxItem.filter({ id: inbox_item_id });
     const item = items[0];
     if (!item) return Response.json({ error: 'Inbox item not found' }, { status: 404 });
+
+    // --- Ownership check ---
+    const isAdmin = user.role === 'admin';
+    if (!isAdmin && item.owner_email !== user.email) {
+      return Response.json({ error: 'Forbidden: you do not own this inbox item' }, { status: 403 });
+    }
+
+    // --- Idempotency: already confirmed ---
+    if (item.status === 'confirmed' && item.linked_expense_id) {
+      const existing = await base44.asServiceRole.entities.Expense.filter({ id: item.linked_expense_id });
+      if (existing.length > 0) {
+        return Response.json({
+          success: true,
+          expense_id: item.linked_expense_id,
+          receipt_code: item.receipt_code,
+          already_confirmed: true,
+        });
+      }
+      // linked_expense_id points to a deleted expense — fall through and re-create
+    }
 
     const d = new Date(date || item.extracted_date || new Date());
     const months = getMonthNames();
@@ -107,7 +129,16 @@ Deno.serve(async (req) => {
       status: 'confirmed',
     });
 
-    // --- Move/rename file in Drive ---
+    // --- Mark inbox item confirmed immediately (before Drive, which is non-fatal) ---
+    await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, {
+      status: 'confirmed',
+      linked_expense_id: expense.id,
+      paid_by: paidBy,
+      category: category || item.category || '',
+      client_allocations: client_allocations || item.client_allocations || [],
+    });
+
+    // --- Move/rename file in Drive (non-fatal) ---
     let publicUrl = item.public_receipt_url;
     try {
       if (item.drive_file_id) {
@@ -120,14 +151,11 @@ Deno.serve(async (req) => {
         const monthId = await getOrCreateCachedFolder(base44, authHeader, monthFolder, yearId);
         const groupId = await getOrCreateCachedFolder(base44, authHeader, group, monthId);
 
-        // Build confirmed filename: R-260508-001 - CB - Hotel ABC - 212.00.pdf
         const origExt = (item.original_filename || 'receipt').split('.').pop().toLowerCase();
         const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
         const supplierPart = (item.extracted_supplier || desc).replace(/[^a-zA-Z0-9 \-]/g, '').trim().slice(0, 40);
         const confirmedName = `${item.receipt_code} - ${paidBy} - ${supplierPart} - ${amt.toFixed(2)}.${safeExt}`;
 
-        // Move file: update parents (add group, remove inbox) + rename
-        // Get current parent to remove
         const fileMetaRes = await fetch(
           `https://www.googleapis.com/drive/v3/files/${item.drive_file_id}?fields=parents`,
           { headers: authHeader }
@@ -144,26 +172,16 @@ Deno.serve(async (req) => {
           }
         );
 
-        // Keep public link (permission already set)
         publicUrl = item.public_receipt_url || `https://drive.google.com/file/d/${item.drive_file_id}/view`;
 
-        // Update expense with final drive link
-        await base44.asServiceRole.entities.Expense.update(expense.id, { receipt_url: publicUrl });
+        await Promise.all([
+          base44.asServiceRole.entities.Expense.update(expense.id, { receipt_url: publicUrl }),
+          base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, { public_receipt_url: publicUrl }),
+        ]);
       }
     } catch (driveErr) {
-      console.error('Drive move failed:', driveErr.message);
-      // Non-fatal
+      console.error('Drive move failed (non-fatal):', driveErr.message);
     }
-
-    // --- Mark inbox item confirmed ---
-    await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, {
-      status: 'confirmed',
-      linked_expense_id: expense.id,
-      paid_by: paidBy,
-      category: category || item.category || '',
-      client_allocations: client_allocations || item.client_allocations || [],
-      public_receipt_url: publicUrl,
-    });
 
     return Response.json({ success: true, expense_id: expense.id, receipt_code: item.receipt_code });
   } catch (error) {

@@ -1,25 +1,21 @@
 /**
  * processInboxReceipt — OCR + Drive upload for a ReceiptInboxItem.
  *
- * Call after creating the ReceiptInboxItem record.
  * POST body: { inbox_item_id: string }
  *
+ * Security:
+ *   - Requires authenticated user
+ *   - Allows if user.role === "admin" OR item.owner_email === user.email
+ *
  * Steps:
- * 1. Fetch the ReceiptInboxItem
- * 2. Run OCR/AI extraction
- * 3. Upload to Drive Inbox folder, create public share link
- * 4. Update item with extracted fields + Drive info
- * 5. Set status to "needs_review" (or "failed" on error)
+ * 1. Auth + ownership check
+ * 2. Fetch the ReceiptInboxItem
+ * 3. Run OCR/AI extraction
+ * 4. Upload to Drive Inbox folder, create public share link
+ * 5. Update item with extracted fields + Drive info
+ * 6. Set status to "needs_review" (or "failed" on error)
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-
-// Paid-by group mapping for Drive folders
-const PAID_BY_GROUP = {
-  WD: 'WD-WD1', WD1: 'WD-WD1',
-  WCA: 'WCA-CB', CB: 'WCA-CB',
-  WSA: 'WSA-ST', ST: 'WSA-ST',
-  WDA: 'WDA-DJ', DJ: 'WDA-DJ',
-};
 
 function getMonthFolderName(dateStr) {
   const d = new Date(dateStr || new Date());
@@ -110,13 +106,24 @@ Deno.serve(async (req) => {
   let inboxItemId;
 
   try {
+    // --- Auth ---
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
     const payload = await req.json();
     inboxItemId = payload.inbox_item_id;
     if (!inboxItemId) return Response.json({ error: 'inbox_item_id required' }, { status: 400 });
 
+    // --- Fetch item ---
     const items = await base44.asServiceRole.entities.ReceiptInboxItem.filter({ id: inboxItemId });
     const item = items[0];
     if (!item) return Response.json({ error: 'Item not found' }, { status: 404 });
+
+    // --- Ownership check ---
+    const isAdmin = user.role === 'admin';
+    if (!isAdmin && item.owner_email !== user.email) {
+      return Response.json({ error: 'Forbidden: you do not own this inbox item' }, { status: 403 });
+    }
 
     // Mark as processing
     await base44.asServiceRole.entities.ReceiptInboxItem.update(inboxItemId, { status: 'processing' });
@@ -174,7 +181,6 @@ Return only valid JSON with those exact keys.`,
       const { inboxId, folderPath: fp } = await getInboxFolderId(base44, authHeader, extractedDate);
       folderPath = fp;
 
-      // Build inbox filename: R-260508-001 - Original Filename.pdf
       const origExt = (item.original_filename || 'receipt').split('.').pop().toLowerCase();
       const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
       const inboxFileName = `${item.receipt_code} - ${item.original_filename || 'receipt'}.${safeExt}`.replace(/\.{2,}/g, '.');
@@ -186,8 +192,7 @@ Return only valid JSON with those exact keys.`,
         publicUrl = uploadData.webViewLink || `https://drive.google.com/file/d/${driveFileId}/view`;
       }
     } catch (driveErr) {
-      console.error('Drive upload failed:', driveErr.message);
-      // Non-fatal — continue, mark ocr_error
+      console.error('Drive upload failed (non-fatal):', driveErr.message);
       if (!ocrError) ocrError = `Drive: ${driveErr.message}`;
     }
 

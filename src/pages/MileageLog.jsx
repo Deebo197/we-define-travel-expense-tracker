@@ -149,7 +149,7 @@ export default function MileageLog() {
     setSaving(true);
     try {
       const primaryClient = form.client_allocations[0]?.client_code;
-      const receiptCode = await generateReceiptCode(primaryClient, form.date);
+      const receiptCode = await generateReceiptCode(form.date);
       const month = formatMonth(form.date);
       const year = new Date(form.date).getFullYear();
       const paidByEntry = PAID_BY_CODES.find(p => p.code === form.paid_by);
