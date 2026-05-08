@@ -1,0 +1,17 @@
+{
+  "name": "ReceiptConfirmationLock",
+  "type": "object",
+  "properties": {
+    "inbox_item_id": {
+      "type": "string",
+      "title": "Inbox Item ID"
+    },
+    "locked_by": {
+      "type": "string",
+      "title": "Locked By (user email)"
+    }
+  },
+  "required": [
+    "inbox_item_id"
+  ]
+}

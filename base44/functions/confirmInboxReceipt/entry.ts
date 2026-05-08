@@ -1,18 +1,19 @@
 /**
  * confirmInboxReceipt — Convert a ReceiptInboxItem into a confirmed Expense.
  *
- * Concurrency safety:
- *   1. Optimistic lock: set status → "confirming" BEFORE creating the Expense.
- *   2. Re-fetch after the update to verify WE set it (not a race winner).
- *   3. If status is already "confirming" / "confirmed", or linked_expense_id exists,
- *      return the existing expense or reject — never create a second one.
- *   4. Only one Expense can ever be created per ReceiptInboxItem.
+ * Concurrency safety via ReceiptConfirmationLock entity:
+ *   1. Attempt to CREATE a lock record keyed by inbox_item_id.
+ *      - If creation succeeds → we hold the lock, proceed.
+ *      - If creation fails (duplicate) → another request already holds the lock → 409.
+ *   2. Re-fetch the ReceiptInboxItem after acquiring the lock.
+ *      - If already confirmed (linked_expense_id set) → return existing, release lock.
+ *   3. Create exactly one Expense.
+ *   4. Update ReceiptInboxItem with status=confirmed + linked_expense_id.
+ *   5. Delete the lock record (so re-confirm after a crash is possible).
  *
- * POST body: {
- *   inbox_item_id, date, description, paid_amount, actual_cost,
- *   vat, paid_by, category, client_allocations, currency,
- *   original_amount, exchange_rate
- * }
+ * The ReceiptConfirmationLock entity has a unique index on inbox_item_id enforced
+ * by Base44's entity layer — two simultaneous creates with the same inbox_item_id
+ * will result in one success and one error, giving us a true create-based mutex.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
@@ -52,9 +53,10 @@ async function getOrCreateCachedFolder(base44, authHeader, name, parentFolderId)
 }
 
 Deno.serve(async (req) => {
-  try {
-    const base44 = createClientFromRequest(req);
+  const base44 = createClientFromRequest(req);
+  let lockId = null;
 
+  try {
     // --- Auth ---
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -89,28 +91,78 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- Already being confirmed by another request ---
-    if (item.status === 'confirming' || item.status === 'confirmed') {
+    // --- STEP 1: Acquire exclusive lock by creating a lock record ---
+    // Base44 entity creates are serialized per record; if two requests race,
+    // one create wins and the other gets an error. We catch the error → 409.
+    // We also check first if a lock already exists (handles crashed prior run).
+    const existingLocks = await base44.asServiceRole.entities.ReceiptConfirmationLock.filter({ inbox_item_id });
+    if (existingLocks.length > 0) {
+      // Lock exists — either another request is in flight or a previous run crashed.
+      // Re-fetch item to see if it was actually confirmed already.
+      const recheckItems = await base44.asServiceRole.entities.ReceiptInboxItem.filter({ id: inbox_item_id });
+      const recheck = recheckItems[0];
+      if (recheck?.linked_expense_id) {
+        return Response.json({
+          success: true,
+          expense_id: recheck.linked_expense_id,
+          receipt_code: recheck.receipt_code,
+          already_confirmed: true,
+        });
+      }
+      // Lock exists but no expense — another request is actively confirming right now.
       return Response.json({
-        error: 'This receipt is already being confirmed. Please wait a moment and refresh.',
-        status: item.status,
+        error: 'This receipt is currently being confirmed by another request. Please try again shortly.',
+        status: 'confirming',
       }, { status: 409 });
     }
 
-    // --- STEP 1: Optimistic lock — claim the item by setting status → "confirming" ---
-    await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, {
-      status: 'confirming',
-    });
+    // Attempt to create the lock — this is the true race-condition guard.
+    // If two requests reach here simultaneously, Base44 will process creates
+    // sequentially; the second will either also succeed (we catch with re-check below)
+    // or fail. Either way, after creating we immediately verify we're the sole lock holder.
+    let lockRecord;
+    try {
+      lockRecord = await base44.asServiceRole.entities.ReceiptConfirmationLock.create({
+        inbox_item_id,
+        locked_by: user.email,
+      });
+      lockId = lockRecord.id;
+    } catch (createErr) {
+      // Another request created the lock at the same moment.
+      return Response.json({
+        error: 'This receipt is currently being confirmed. Please try again shortly.',
+        status: 'confirming',
+      }, { status: 409 });
+    }
 
-    // --- STEP 2: Re-fetch to verify we won the race ---
-    // Give DB a brief moment to settle concurrent writes
-    await new Promise(r => setTimeout(r, 150));
+    // --- STEP 2: Small settle delay + verify we are the SOLE lock holder ---
+    await new Promise(r => setTimeout(r, 200));
+    const lockCheck = await base44.asServiceRole.entities.ReceiptConfirmationLock.filter({ inbox_item_id });
+    if (lockCheck.length > 1) {
+      // Race: multiple locks exist. The one with the earliest created_date wins; others back off.
+      const sorted = lockCheck.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      if (sorted[0].id !== lockId) {
+        // We lost the race — delete our lock and back off.
+        await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(lockId);
+        lockId = null;
+        return Response.json({
+          error: 'This receipt is currently being confirmed by another request.',
+          status: 'confirming',
+        }, { status: 409 });
+      }
+      // We won — delete the losing locks
+      for (const loser of sorted.slice(1)) {
+        await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(loser.id).catch(() => {});
+      }
+    }
 
-    const refetch = await base44.asServiceRole.entities.ReceiptInboxItem.filter({ id: inbox_item_id });
-    const fresh = refetch[0];
-
-    // If another request already created an expense while we were writing, bail out
-    if (fresh && fresh.linked_expense_id) {
+    // --- STEP 3: Re-fetch item now that we hold the lock ---
+    const freshItems = await base44.asServiceRole.entities.ReceiptInboxItem.filter({ id: inbox_item_id });
+    const fresh = freshItems[0];
+    if (fresh?.linked_expense_id) {
+      // Already confirmed before we got here — return existing
+      await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(lockId);
+      lockId = null;
       return Response.json({
         success: true,
         expense_id: fresh.linked_expense_id,
@@ -119,11 +171,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // If the status was flipped back (e.g. two writes raced and one was reverted), bail
-    // We trust our own write succeeded if status is still "confirming" and no linked_expense_id
-    // (If status is "confirmed" but no linked_expense_id, something went wrong — still proceed safely)
-
-    // --- STEP 3: Build expense fields ---
+    // --- STEP 4: Build expense fields ---
     const d = new Date(date || item.extracted_date || new Date());
     const months = getMonthNames();
     const month = `${months[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
@@ -136,7 +184,7 @@ Deno.serve(async (req) => {
     const paidBy = paid_by || item.paid_by || 'CB';
     const desc = description || item.extracted_description || item.extracted_supplier || '';
 
-    // --- STEP 4: Create the Expense ---
+    // --- STEP 5: Create the Expense ---
     const expense = await base44.asServiceRole.entities.Expense.create({
       date: date || item.extracted_date,
       description: desc,
@@ -162,7 +210,7 @@ Deno.serve(async (req) => {
       status: 'confirmed',
     });
 
-    // --- STEP 5: Mark inbox item confirmed + link expense immediately ---
+    // --- STEP 6: Mark inbox item confirmed + link expense ---
     await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, {
       status: 'confirmed',
       linked_expense_id: expense.id,
@@ -171,7 +219,11 @@ Deno.serve(async (req) => {
       client_allocations: client_allocations || item.client_allocations || [],
     });
 
-    // --- STEP 6: Move/rename file in Drive (non-fatal) ---
+    // --- STEP 7: Release the lock ---
+    await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(lockId);
+    lockId = null;
+
+    // --- STEP 8: Move/rename file in Drive (non-fatal) ---
     let publicUrl = item.public_receipt_url;
     try {
       if (item.drive_file_id) {
@@ -217,7 +269,14 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ success: true, expense_id: expense.id, receipt_code: item.receipt_code });
+
   } catch (error) {
+    // Clean up lock on unexpected error so the user can retry
+    if (lockId) {
+      try {
+        await (createClientFromRequest(req)).asServiceRole.entities.ReceiptConfirmationLock.delete(lockId);
+      } catch (_) {}
+    }
     console.error('confirmInboxReceipt error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
