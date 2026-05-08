@@ -21,6 +21,7 @@
         "inbox",
         "processing",
         "needs_review",
+        "confirming",
         "confirmed",
         "failed"
       ],

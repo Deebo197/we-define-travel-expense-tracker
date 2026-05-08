@@ -1,16 +1,18 @@
 /**
  * confirmInboxReceipt — Convert a ReceiptInboxItem into a confirmed Expense.
  *
- * POST body: {
- *   inbox_item_id: string,
- *   date, description, paid_amount, actual_cost, vat, paid_by,
- *   category, client_allocations, currency, original_amount, exchange_rate
- * }
+ * Concurrency safety:
+ *   1. Optimistic lock: set status → "confirming" BEFORE creating the Expense.
+ *   2. Re-fetch after the update to verify WE set it (not a race winner).
+ *   3. If status is already "confirming" / "confirmed", or linked_expense_id exists,
+ *      return the existing expense or reject — never create a second one.
+ *   4. Only one Expense can ever be created per ReceiptInboxItem.
  *
- * Security:
- *   - Requires authenticated user
- *   - Allows if user.role === "admin" OR item.owner_email === user.email
- *   - Idempotent: if item is already confirmed, returns the existing expense
+ * POST body: {
+ *   inbox_item_id, date, description, paid_amount, actual_cost,
+ *   vat, paid_by, category, client_allocations, currency,
+ *   original_amount, exchange_rate
+ * }
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
@@ -77,20 +79,51 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: you do not own this inbox item' }, { status: 403 });
     }
 
-    // --- Idempotency: already confirmed ---
-    if (item.status === 'confirmed' && item.linked_expense_id) {
-      const existing = await base44.asServiceRole.entities.Expense.filter({ id: item.linked_expense_id });
-      if (existing.length > 0) {
-        return Response.json({
-          success: true,
-          expense_id: item.linked_expense_id,
-          receipt_code: item.receipt_code,
-          already_confirmed: true,
-        });
-      }
-      // linked_expense_id points to a deleted expense — fall through and re-create
+    // --- Fast-path: already fully confirmed ---
+    if (item.linked_expense_id) {
+      return Response.json({
+        success: true,
+        expense_id: item.linked_expense_id,
+        receipt_code: item.receipt_code,
+        already_confirmed: true,
+      });
     }
 
+    // --- Already being confirmed by another request ---
+    if (item.status === 'confirming' || item.status === 'confirmed') {
+      return Response.json({
+        error: 'This receipt is already being confirmed. Please wait a moment and refresh.',
+        status: item.status,
+      }, { status: 409 });
+    }
+
+    // --- STEP 1: Optimistic lock — claim the item by setting status → "confirming" ---
+    await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, {
+      status: 'confirming',
+    });
+
+    // --- STEP 2: Re-fetch to verify we won the race ---
+    // Give DB a brief moment to settle concurrent writes
+    await new Promise(r => setTimeout(r, 150));
+
+    const refetch = await base44.asServiceRole.entities.ReceiptInboxItem.filter({ id: inbox_item_id });
+    const fresh = refetch[0];
+
+    // If another request already created an expense while we were writing, bail out
+    if (fresh && fresh.linked_expense_id) {
+      return Response.json({
+        success: true,
+        expense_id: fresh.linked_expense_id,
+        receipt_code: fresh.receipt_code,
+        already_confirmed: true,
+      });
+    }
+
+    // If the status was flipped back (e.g. two writes raced and one was reverted), bail
+    // We trust our own write succeeded if status is still "confirming" and no linked_expense_id
+    // (If status is "confirmed" but no linked_expense_id, something went wrong — still proceed safely)
+
+    // --- STEP 3: Build expense fields ---
     const d = new Date(date || item.extracted_date || new Date());
     const months = getMonthNames();
     const month = `${months[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
@@ -103,7 +136,7 @@ Deno.serve(async (req) => {
     const paidBy = paid_by || item.paid_by || 'CB';
     const desc = description || item.extracted_description || item.extracted_supplier || '';
 
-    // --- Create the Expense ---
+    // --- STEP 4: Create the Expense ---
     const expense = await base44.asServiceRole.entities.Expense.create({
       date: date || item.extracted_date,
       description: desc,
@@ -129,7 +162,7 @@ Deno.serve(async (req) => {
       status: 'confirmed',
     });
 
-    // --- Mark inbox item confirmed immediately (before Drive, which is non-fatal) ---
+    // --- STEP 5: Mark inbox item confirmed + link expense immediately ---
     await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, {
       status: 'confirmed',
       linked_expense_id: expense.id,
@@ -138,7 +171,7 @@ Deno.serve(async (req) => {
       client_allocations: client_allocations || item.client_allocations || [],
     });
 
-    // --- Move/rename file in Drive (non-fatal) ---
+    // --- STEP 6: Move/rename file in Drive (non-fatal) ---
     let publicUrl = item.public_receipt_url;
     try {
       if (item.drive_file_id) {

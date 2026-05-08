@@ -61,10 +61,10 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
     Math.abs(totalPct - 100) < 0.01;
 
   const handleConfirm = async () => {
-    if (!canConfirm || !item) return;
+    if (!canConfirm || !item || confirming) return;
     setConfirming(true);
     try {
-      await base44.functions.invoke("confirmInboxReceipt", {
+      const res = await base44.functions.invoke("confirmInboxReceipt", {
         inbox_item_id: item.id,
         date: form.date,
         description: form.description,
@@ -76,13 +76,23 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
         client_allocations: form.client_allocations,
         currency: form.currency,
       });
-      toast.success(`${item.receipt_code} confirmed as an expense`);
+      if (res.data?.already_confirmed) {
+        toast.info(`${item.receipt_code} was already confirmed`);
+      } else {
+        toast.success(`${item.receipt_code} confirmed as an expense`);
+      }
       onConfirmed();
       onClose();
     } catch (err) {
-      toast.error(err.message || "Failed to confirm expense");
-    } finally {
-      setConfirming(false);
+      const msg = err?.response?.data?.error || err.message || "Failed to confirm expense";
+      // 409 = another request is already confirming — treat as success in flight
+      if (err?.response?.status === 409) {
+        toast.info("Already being confirmed — please refresh in a moment");
+        onClose();
+      } else {
+        toast.error(msg);
+        setConfirming(false);
+      }
     }
   };
 
