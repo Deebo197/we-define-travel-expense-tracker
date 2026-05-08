@@ -171,6 +171,29 @@ Deno.serve(async (req) => {
       });
     }
 
+    // --- STEP 3b: Safety check — has an Expense already been created for this receipt_code? ---
+    // Guards against: Expense.create succeeded but the function crashed before
+    // ReceiptInboxItem.linked_expense_id was written (e.g. network blip, timeout).
+    if (item.receipt_code) {
+      const existingExpenses = await base44.asServiceRole.entities.Expense.filter({ receipt_code: item.receipt_code });
+      if (existingExpenses.length > 0) {
+        const existingExpense = existingExpenses[0];
+        // Heal the inbox item — link it to the already-created expense
+        await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, {
+          status: 'confirmed',
+          linked_expense_id: existingExpense.id,
+        });
+        await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(lockId);
+        lockId = null;
+        return Response.json({
+          success: true,
+          expense_id: existingExpense.id,
+          receipt_code: item.receipt_code,
+          already_confirmed: true,
+        });
+      }
+    }
+
     // --- STEP 4: Build expense fields ---
     const d = new Date(date || item.extracted_date || new Date());
     const months = getMonthNames();
