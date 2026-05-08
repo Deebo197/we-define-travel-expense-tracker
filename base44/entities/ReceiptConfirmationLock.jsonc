@@ -13,5 +13,8 @@
   },
   "required": [
     "inbox_item_id"
+  ],
+  "unique_fields": [
+    "inbox_item_id"
   ]
 }

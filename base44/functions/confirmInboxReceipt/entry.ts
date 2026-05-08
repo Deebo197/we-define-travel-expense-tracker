@@ -135,25 +135,36 @@ Deno.serve(async (req) => {
       }, { status: 409 });
     }
 
-    // --- STEP 2: Small settle delay + verify we are the SOLE lock holder ---
+    // --- STEP 2: Small settle delay + verify we are the EARLIEST lock holder ---
     await new Promise(r => setTimeout(r, 200));
     const lockCheck = await base44.asServiceRole.entities.ReceiptConfirmationLock.filter({ inbox_item_id });
-    if (lockCheck.length > 1) {
-      // Race: multiple locks exist. The one with the earliest created_date wins; others back off.
-      const sorted = lockCheck.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-      if (sorted[0].id !== lockId) {
-        // We lost the race — delete our lock and back off.
-        await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(lockId);
-        lockId = null;
-        return Response.json({
-          error: 'This receipt is currently being confirmed by another request.',
-          status: 'confirming',
-        }, { status: 409 });
-      }
-      // We won — delete the losing locks
-      for (const loser of sorted.slice(1)) {
-        await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(loser.id).catch(() => {});
-      }
+
+    // No locks found at all (e.g. another winner already cleaned up) — we must not proceed
+    if (lockCheck.length === 0) {
+      lockId = null; // already gone
+      return Response.json({
+        error: 'Lock was released before verification. Please try again.',
+        status: 'confirming',
+      }, { status: 409 });
+    }
+
+    // Sort by created_date ascending — earliest record is the winner regardless of count
+    const sorted = lockCheck.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+    const winner = sorted[0];
+
+    if (winner.id !== lockId) {
+      // We did not win — delete our own lock if it still exists, then back off
+      await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(lockId).catch(() => {});
+      lockId = null;
+      return Response.json({
+        error: 'This receipt is currently being confirmed by another request.',
+        status: 'confirming',
+      }, { status: 409 });
+    }
+
+    // We are the winner — clean up any extra losing locks (defensive, shouldn't happen with unique index)
+    for (const loser of sorted.slice(1)) {
+      await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(loser.id).catch(() => {});
     }
 
     // --- STEP 3: Re-fetch item now that we hold the lock ---
