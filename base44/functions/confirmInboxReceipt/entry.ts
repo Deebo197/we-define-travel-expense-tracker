@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
     // --- Fetch item ---
     const items = await base44.asServiceRole.entities.ReceiptInboxItem.filter({ id: inbox_item_id });
-    const item = items[0];
+    let item = items[0];
     if (!item) return Response.json({ error: 'Inbox item not found' }, { status: 404 });
 
     // --- Ownership check ---
@@ -202,6 +202,80 @@ Deno.serve(async (req) => {
           receipt_code: item.receipt_code,
           already_confirmed: true,
         });
+      }
+    }
+
+    // --- STEP 3c: Ensure all receipt_files have Drive metadata ---
+    // If any file is missing drive_file_id, upload it now to the confirmed folder.
+    if (item.receipt_files?.length > 0) {
+      const missingDrive = item.receipt_files.filter(f => !f.drive_file_id);
+      if (missingDrive.length > 0) {
+        try {
+          const { accessToken } = await base44.asServiceRole.connectors.getConnection('googledrive');
+          const authHeader = { Authorization: `Bearer ${accessToken}` };
+
+          // Place missing files in the Inbox folder temporarily (processInboxReceipt will move on confirm)
+          const rootId = await getOrCreateCachedFolder(base44, authHeader, 'WDT Receipts', null);
+          const tempYearStr = String(new Date().getFullYear());
+          const tempMonthFolder = (() => {
+            const d2 = new Date();
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')} ${months[d2.getMonth()]}`;
+          })();
+          const yearId2 = await getOrCreateCachedFolder(base44, authHeader, tempYearStr, rootId);
+          const monthId2 = await getOrCreateCachedFolder(base44, authHeader, tempMonthFolder, yearId2);
+          const inboxId2 = await getOrCreateCachedFolder(base44, authHeader, 'Inbox', monthId2);
+
+          const updatedFiles = [...item.receipt_files];
+          let supportingIdx = updatedFiles.filter((f, idx) => f.role !== 'primary' && idx < updatedFiles.findIndex(f2 => !f2.drive_file_id)).length;
+
+          for (let i = 0; i < updatedFiles.length; i++) {
+            const rf = updatedFiles[i];
+            if (rf.drive_file_id) continue;
+
+            const origExt = (rf.original_filename || 'receipt').split('.').pop().toLowerCase();
+            const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
+            const label = rf.role === 'primary' ? 'Primary' : `Supporting ${++supportingIdx}`;
+            const fname = `${item.receipt_code} - ${label} - ${rf.original_filename || 'receipt'}.${safeExt}`.replace(/\.{2,}/g, '.');
+
+            const fileRes2 = await fetch(rf.file_url);
+            if (!fileRes2.ok) { console.error(`Could not fetch file for Drive upload: ${rf.file_url}`); continue; }
+            const fileBlob2 = await fileRes2.blob();
+            const contentType2 = fileBlob2.type || 'application/octet-stream';
+            const fileAB = await fileBlob2.arrayBuffer();
+            const fileBytes2 = new Uint8Array(fileAB);
+            const boundary2 = 'WDTInboxBnd';
+            const meta2 = JSON.stringify({ name: fname, parents: [inboxId2] });
+            const enc2 = new TextEncoder();
+            const metaPart2 = enc2.encode(`--${boundary2}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta2}\r\n--${boundary2}\r\nContent-Type: ${contentType2}\r\n\r\n`);
+            const closingPart2 = enc2.encode(`\r\n--${boundary2}--`);
+            const body2 = new Uint8Array(metaPart2.length + fileBytes2.length + closingPart2.length);
+            body2.set(metaPart2, 0); body2.set(fileBytes2, metaPart2.length); body2.set(closingPart2, metaPart2.length + fileBytes2.length);
+
+            const upRes = await fetch(
+              'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+              { method: 'POST', headers: { ...authHeader, 'Content-Type': `multipart/related; boundary=${boundary2}` }, body: body2 }
+            );
+            const upData = await upRes.json();
+            if (upData.id) {
+              await fetch(`https://www.googleapis.com/drive/v3/files/${upData.id}/permissions`, {
+                method: 'POST', headers: { ...authHeader, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+              });
+              const rfLink = upData.webViewLink || `https://drive.google.com/file/d/${upData.id}/view`;
+              updatedFiles[i] = { ...rf, drive_file_id: upData.id, public_receipt_url: rfLink };
+            } else {
+              console.error(`Drive upload failed for missing file index ${i}:`, upData);
+            }
+          }
+
+          // Persist updated files on the item
+          await base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, { receipt_files: updatedFiles });
+          // Refresh item reference for expense creation below
+          item = { ...item, receipt_files: updatedFiles };
+        } catch (driveUploadErr) {
+          console.error('Inline Drive upload for missing files failed (non-fatal):', driveUploadErr.message);
+        }
       }
     }
 

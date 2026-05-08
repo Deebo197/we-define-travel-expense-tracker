@@ -62,19 +62,26 @@ function FilePicker({ items, primaryId, onSetPrimary }) {
   );
 }
 
+const READY_STATUSES = ["needs_review", "confirmed", "failed"];
+
 export default function InboxMergeDialog({ items, open, onClose, onMerged }) {
   const [primaryId, setPrimaryId] = useState(items?.[0]?.id || null);
   const [merging, setMerging] = useState(false);
 
   if (!items || items.length < 2) return null;
 
+  // Items that are still processing/unready cannot be merged
+  const unreadyItems = items.filter(i => !READY_STATUSES.includes(i.status));
+  const canMerge = unreadyItems.length === 0;
+
   const primaryItem = items.find(i => i.id === primaryId) || items[0];
   const supportingItems = items.filter(i => i.id !== primaryId);
 
   const handleMerge = async () => {
+    if (!canMerge) return;
     setMerging(true);
     try {
-      // Build receipt_files array: primary first, then supporting
+      // Build receipt_files: primary first, then supporting
       const receiptFiles = [
         {
           file_url: primaryItem.file_url,
@@ -103,7 +110,8 @@ export default function InboxMergeDialog({ items, open, onClose, onMerged }) {
         receipt_files: receiptFiles,
         primary_receipt_file_url: primaryItem.file_url,
         merged_from_ids: items.map(i => i.id),
-        status: primaryItem.status === "confirmed" ? "confirmed" : "needs_review",
+        // Keep needs_review status so user confirms through the review dialog
+        status: "needs_review",
       });
 
       // Archive merged (supporting) items
@@ -112,6 +120,14 @@ export default function InboxMergeDialog({ items, open, onClose, onMerged }) {
           base44.entities.ReceiptInboxItem.update(item.id, { status: "merged" })
         )
       );
+
+      // Re-run processInboxReceipt on the merged item so any files missing
+      // drive_file_id get uploaded to Drive under the Inbox folder
+      const anyMissingDrive = receiptFiles.some(f => !f.drive_file_id);
+      if (anyMissingDrive) {
+        base44.functions.invoke("processInboxReceipt", { inbox_item_id: primaryItem.id })
+          .catch(err => console.error("Re-process after merge failed:", err));
+      }
 
       toast.success(`Merged ${items.length} receipts into ${primaryItem.receipt_code}`);
       onMerged(primaryItem.id);
@@ -132,10 +148,24 @@ export default function InboxMergeDialog({ items, open, onClose, onMerged }) {
         <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
           Select which file should be the <strong>Primary</strong> receipt. The primary file's receipt code ({primaryItem.receipt_code}) will be kept. Other items will be archived.
         </p>
+
+        {/* Warn about unready items */}
+        {!canMerge && (
+          <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-[10px] text-sm"
+            style={{ backgroundColor: "rgba(255,181,71,0.1)", border: "1px solid rgba(255,181,71,0.25)", color: "#FFB547" }}>
+            <Loader2 className="h-4 w-4 mt-0.5 flex-shrink-0 animate-spin" />
+            <span>
+              {unreadyItems.length === 1
+                ? "1 receipt is still processing. Please wait for it to finish before merging."
+                : `${unreadyItems.length} receipts are still processing. Please wait for them to finish before merging.`}
+            </span>
+          </div>
+        )}
+
         <FilePicker items={items} primaryId={primaryId} onSetPrimary={setPrimaryId} />
         <div className="flex gap-3 mt-5">
           <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-          <Button onClick={handleMerge} disabled={merging} className="flex-1">
+          <Button onClick={handleMerge} disabled={merging || !canMerge} className="flex-1">
             {merging
               ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Merging…</>
               : <><CheckCircle2 className="h-4 w-4 mr-2" /> Merge {items.length} receipts</>

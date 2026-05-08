@@ -1,6 +1,8 @@
 /**
  * syncReceiptToDrive — Sync a confirmed Expense or MileageJourney receipt to Google Drive.
  *
+ * Supports both single-file and multi-file (receipt_files[]) expenses.
+ *
  * Folder structure:
  *   WDT Receipts / YEAR / YYYY-MM Month / GROUP
  *
@@ -65,6 +67,45 @@ async function getOrCreateCachedFolder(base44, authHeader, name, parentFolderId)
   return json.id;
 }
 
+async function uploadFileToDrive(authHeader, fileUrl, fileName, folderId) {
+  const fileRes = await fetch(fileUrl);
+  if (!fileRes.ok) throw new Error(`Failed to fetch file: ${fileUrl} (${fileRes.status})`);
+  const fileBlob = await fileRes.blob();
+  const contentType = fileBlob.type || 'application/octet-stream';
+  const fileArrayBuffer = await fileBlob.arrayBuffer();
+  const fileBytes = new Uint8Array(fileArrayBuffer);
+
+  const boundary = 'WDTReceiptBoundary';
+  const metadata = JSON.stringify({ name: fileName, parents: [folderId] });
+  const encoder = new TextEncoder();
+  const metaPart = encoder.encode(
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${contentType}\r\n\r\n`
+  );
+  const closingPart = encoder.encode(`\r\n--${boundary}--`);
+  const body = new Uint8Array(metaPart.length + fileBytes.length + closingPart.length);
+  body.set(metaPart, 0);
+  body.set(fileBytes, metaPart.length);
+  body.set(closingPart, metaPart.length + fileBytes.length);
+
+  const uploadRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+    {
+      method: 'POST',
+      headers: { ...authHeader, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
+    }
+  );
+  return uploadRes.json();
+}
+
+async function makeFilePublic(authHeader, fileId) {
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    method: 'POST',
+    headers: { ...authHeader, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+  });
+}
+
 Deno.serve(async (req) => {
   let base44, entityId, entityType;
   try {
@@ -79,109 +120,152 @@ Deno.serve(async (req) => {
 
     if (!data) return Response.json({ error: 'No data' }, { status: 400 });
 
-    const receiptFile = data.receipt_file;
     const receiptCode = data.receipt_code;
     const paidBy = data.paid_by;
+    const receiptFiles = data.receipt_files; // may be array or undefined
 
-    if (!receiptFile || !receiptCode) {
-      return Response.json({ skipped: true, reason: 'Missing receipt_file or receipt_code' });
+    // For mileage, only single-file is supported
+    if (entityType === 'mileage') {
+      const receiptFile = data.receipt_file;
+      if (!receiptFile || !receiptCode) {
+        return Response.json({ skipped: true, reason: 'Missing receipt_file or receipt_code' });
+      }
+      if (data.receipt_url?.includes('drive.google.com')) {
+        return Response.json({ skipped: true, reason: 'Already synced to Drive' });
+      }
+
+      const { accessToken } = await base44.asServiceRole.connectors.getConnection('googledrive');
+      const authHeader = { Authorization: `Bearer ${accessToken}` };
+      const dateStr = data.date || new Date().toISOString().split('T')[0];
+      const { year, monthFolder } = getMonthFolderName(dateStr);
+
+      const rootId = await getOrCreateCachedFolder(base44, authHeader, 'WDT Receipts', null);
+      const yearId = await getOrCreateCachedFolder(base44, authHeader, year, rootId);
+      const monthId = await getOrCreateCachedFolder(base44, authHeader, monthFolder, yearId);
+      const groupId = await getOrCreateCachedFolder(base44, authHeader, 'Mileage', monthId);
+
+      const urlPath = receiptFile.split('?')[0];
+      const ext = urlPath.split('.').pop().toLowerCase();
+      const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(ext) ? ext : 'jpg';
+      const fileName = `${receiptCode} - Mileage.${safeExt}`;
+
+      const uploadData = await uploadFileToDrive(authHeader, receiptFile, fileName, groupId);
+      if (!uploadData.id) {
+        await flagSyncFailed(base44, entityType, entityId);
+        return Response.json({ error: 'Upload failed', details: uploadData }, { status: 500 });
+      }
+      await makeFilePublic(authHeader, uploadData.id);
+      const shareableLink = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
+      await base44.asServiceRole.entities.MileageJourney.update(entityId, { receipt_url: shareableLink, drive_sync_failed: false });
+      return Response.json({ success: true, drive_link: shareableLink, file_id: uploadData.id });
     }
 
-    // Skip if already synced to Drive
-    if (data.receipt_url?.includes('drive.google.com')) {
+    // ── Expense path ──────────────────────────────────────────────────────────
+
+    if (!receiptCode) {
+      return Response.json({ skipped: true, reason: 'Missing receipt_code' });
+    }
+
+    // Skip entirely if primary receipt_url is already in Drive AND every receipt_file also has a drive link
+    const hasMultiFile = Array.isArray(receiptFiles) && receiptFiles.length > 0;
+    const primaryAlreadyInDrive = data.receipt_url?.includes('drive.google.com');
+    const allFilesInDrive = hasMultiFile && receiptFiles.every(f => f.drive_file_id && f.public_receipt_url?.includes('drive.google.com'));
+
+    if (primaryAlreadyInDrive && (!hasMultiFile || allFilesInDrive)) {
       return Response.json({ skipped: true, reason: 'Already synced to Drive' });
+    }
+
+    // We need at least one uploadable file
+    const singleReceiptFile = data.receipt_file;
+    if (!hasMultiFile && !singleReceiptFile) {
+      return Response.json({ skipped: true, reason: 'No receipt file to upload' });
     }
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('googledrive');
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
-    // Build folder path: WDT Receipts / YEAR / YYYY-MM Month / GROUP
     const dateStr = data.date || new Date().toISOString().split('T')[0];
     const { year, monthFolder } = getMonthFolderName(dateStr);
-
-    let group;
-    if (entityType === 'mileage') {
-      group = 'Mileage';
-    } else {
-      group = PAID_BY_GROUP[paidBy] || (paidBy ? `${paidBy}` : 'Inbox');
-    }
+    const group = PAID_BY_GROUP[paidBy] || (paidBy ? paidBy : 'Inbox');
 
     const rootId = await getOrCreateCachedFolder(base44, authHeader, 'WDT Receipts', null);
     const yearId = await getOrCreateCachedFolder(base44, authHeader, year, rootId);
     const monthId = await getOrCreateCachedFolder(base44, authHeader, monthFolder, yearId);
     const groupId = await getOrCreateCachedFolder(base44, authHeader, group, monthId);
 
-    // Download the receipt file
-    const fileRes = await fetch(receiptFile);
-    if (!fileRes.ok) {
-      await flagSyncFailed(base44, entityType, entityId);
-      return Response.json({ error: 'Failed to fetch receipt file' }, { status: 500 });
-    }
+    const supplierOrDesc = (data.description || '').replace(/[^a-zA-Z0-9 \-]/g, '').trim().slice(0, 40);
+    const amt = Number(data.paid_amount || 0).toFixed(2);
+    const basePrefix = `${receiptCode} - ${paidBy || ''} - ${supplierOrDesc} - ${amt}`;
 
-    const fileBlob = await fileRes.blob();
-    const contentType = fileBlob.type || 'application/octet-stream';
-    const urlPath = receiptFile.split('?')[0];
-    const ext = urlPath.split('.').pop().toLowerCase();
-    const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(ext) ? ext : 'jpg';
+    let primaryPublicUrl = data.receipt_url || '';
+    let updatedReceiptFiles = hasMultiFile ? [...receiptFiles] : null;
 
-    // Confirmed filename format: R-260508-001 - CB - Hotel ABC - 212.00.pdf
-    let fileName;
-    if (entityType === 'mileage') {
-      fileName = `${receiptCode} - Mileage.${safeExt}`;
-    } else {
-      const supplierOrDesc = (data.description || '').replace(/[^a-zA-Z0-9 \-]/g, '').trim().slice(0, 40);
-      const amt = (data.paid_amount || 0).toFixed(2);
-      fileName = `${receiptCode} - ${paidBy || ''} - ${supplierOrDesc} - ${amt}.${safeExt}`;
-    }
+    if (hasMultiFile) {
+      // Upload/move each file that doesn't yet have a drive_file_id
+      let supportingCount = 0;
+      for (let i = 0; i < receiptFiles.length; i++) {
+        const rf = receiptFiles[i];
 
-    // Multipart upload to Drive
-    const boundary = 'WDTReceiptBoundary';
-    const metadata = JSON.stringify({ name: fileName, parents: [groupId] });
-    const fileArrayBuffer = await fileBlob.arrayBuffer();
-    const fileBytes = new Uint8Array(fileArrayBuffer);
-    const encoder = new TextEncoder();
-    const metaPart = encoder.encode(
-      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${contentType}\r\n\r\n`
-    );
-    const closingPart = encoder.encode(`\r\n--${boundary}--`);
-    const body = new Uint8Array(metaPart.length + fileBytes.length + closingPart.length);
-    body.set(metaPart, 0);
-    body.set(fileBytes, metaPart.length);
-    body.set(closingPart, metaPart.length + fileBytes.length);
+        // Already in Drive — skip
+        if (rf.drive_file_id && rf.public_receipt_url?.includes('drive.google.com')) {
+          if (rf.role === 'primary') primaryPublicUrl = rf.public_receipt_url;
+          continue;
+        }
 
-    const uploadRes = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
-      {
-        method: 'POST',
-        headers: { ...authHeader, 'Content-Type': `multipart/related; boundary=${boundary}` },
-        body,
+        const origExt = (rf.original_filename || rf.file_url || 'receipt').split('.').pop().toLowerCase();
+        const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
+        const label = rf.role === 'primary' ? 'Primary' : `Supporting ${++supportingCount}`;
+        const fileName = `${basePrefix} - ${label}.${safeExt}`;
+
+        const uploadData = await uploadFileToDrive(authHeader, rf.file_url, fileName, groupId);
+        if (!uploadData.id) {
+          console.error(`Upload failed for receipt_file index ${i}:`, uploadData);
+          continue; // best-effort — don't abort the whole sync
+        }
+        await makeFilePublic(authHeader, uploadData.id);
+        const fileLink = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
+
+        updatedReceiptFiles[i] = { ...rf, drive_file_id: uploadData.id, public_receipt_url: fileLink };
+        if (rf.role === 'primary') primaryPublicUrl = fileLink;
       }
-    );
 
-    const uploadData = await uploadRes.json();
-    if (!uploadData.id) {
-      await flagSyncFailed(base44, entityType, entityId);
-      return Response.json({ error: 'Upload failed', details: uploadData }, { status: 500 });
+      await base44.asServiceRole.entities.Expense.update(entityId, {
+        receipt_files: updatedReceiptFiles,
+        receipt_url: primaryPublicUrl,
+        primary_receipt_file_url: primaryPublicUrl,
+        drive_sync_failed: false,
+      });
+
+    } else {
+      // Single-file fallback
+      const urlPath = singleReceiptFile.split('?')[0];
+      const ext = urlPath.split('.').pop().toLowerCase();
+      const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(ext) ? ext : 'jpg';
+      const fileName = `${basePrefix} - Primary.${safeExt}`;
+
+      const uploadData = await uploadFileToDrive(authHeader, singleReceiptFile, fileName, groupId);
+      if (!uploadData.id) {
+        await flagSyncFailed(base44, entityType, entityId);
+        return Response.json({ error: 'Upload failed', details: uploadData }, { status: 500 });
+      }
+      await makeFilePublic(authHeader, uploadData.id);
+      primaryPublicUrl = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
+
+      await base44.asServiceRole.entities.Expense.update(entityId, {
+        receipt_url: primaryPublicUrl,
+        drive_sync_failed: false,
+      });
     }
 
-    // Make file shareable
-    await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
-      method: 'POST',
-      headers: { ...authHeader, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    return Response.json({
+      success: true,
+      drive_link: primaryPublicUrl,
+      folder_path: `WDT Receipts/${year}/${monthFolder}/${group}`,
     });
 
-    const shareableLink = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
-
-    if (entityType === 'expense') {
-      await base44.asServiceRole.entities.Expense.update(entityId, { receipt_url: shareableLink, drive_sync_failed: false });
-    } else {
-      await base44.asServiceRole.entities.MileageJourney.update(entityId, { receipt_url: shareableLink, drive_sync_failed: false });
-    }
-
-    return Response.json({ success: true, drive_link: shareableLink, file_id: uploadData.id, folder_path: `WDT Receipts/${year}/${monthFolder}/${group}` });
   } catch (error) {
     await flagSyncFailed(base44, entityType, entityId);
+    console.error('syncReceiptToDrive error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
