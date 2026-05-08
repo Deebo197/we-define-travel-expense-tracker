@@ -114,6 +114,47 @@
       "type": "string",
       "title": "Receipt URL"
     },
+    "primary_receipt_file_url": {
+      "type": "string",
+      "title": "Primary Receipt File URL"
+    },
+    "receipt_files": {
+      "type": "array",
+      "title": "Receipt Files",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_url": {
+            "type": "string"
+          },
+          "public_receipt_url": {
+            "type": "string"
+          },
+          "drive_file_id": {
+            "type": "string"
+          },
+          "original_filename": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "supporting"
+            ]
+          },
+          "sort_order": {
+            "type": "number"
+          },
+          "ocr_used": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
     "source": {
       "type": "string",
       "title": "Source",

@@ -6,8 +6,9 @@ import AnimatedPage from "@/components/AnimatedPage";
 import InboxDropZone from "@/components/InboxDropZone";
 import InboxItemCard from "@/components/InboxItemCard";
 import InboxReviewDialog from "@/components/InboxReviewDialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Inbox, CheckCircle2, AlertTriangle, Clock, Loader2 } from "lucide-react";
+import InboxMergeDialog from "@/components/InboxMergeDialog";
+import { Button } from "@/components/ui/button";
+import { Inbox, CheckCircle2, AlertTriangle, Clock, Loader2, Layers, X } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_FILTERS = [
@@ -24,6 +25,9 @@ export default function ReceiptInbox() {
   const [uploadQueue, setUploadQueue] = useState([]); // { file, status, progress }
   const [statusFilter, setStatusFilter] = useState("all");
   const [reviewItem, setReviewItem] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showMerge, setShowMerge] = useState(false);
 
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
@@ -112,6 +116,22 @@ export default function ReceiptInbox() {
   const handleConfirmed = () => {
     queryClient.invalidateQueries({ queryKey: ["receiptInboxItems"] });
   };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const selectedItems = items.filter(i => selectedIds.has(i.id));
+  const canMerge = selectedItems.length >= 2 && selectedItems.every(i => i.status !== "confirmed" && i.status !== "merged");
 
   return (
     <AnimatedPage>
@@ -207,6 +227,34 @@ export default function ReceiptInbox() {
           )}
         </AnimatePresence>
 
+        {/* Merge / selection toolbar */}
+        {selectMode ? (
+          <div className="flex items-center gap-3 flex-wrap rounded-[14px] p-3"
+            style={{ backgroundColor: "rgba(127,91,255,0.08)", border: "1px solid rgba(127,91,255,0.2)" }}>
+            <span className="text-sm font-semibold flex-1" style={{ color: "#7F5BFF" }}>
+              {selectedIds.size} selected
+            </span>
+            <Button
+              size="sm"
+              onClick={() => setShowMerge(true)}
+              disabled={!canMerge}
+              className="gap-1.5"
+            >
+              <Layers className="h-4 w-4" />
+              Merge into one receipt
+            </Button>
+            <Button size="sm" variant="ghost" onClick={exitSelectMode} className="gap-1.5">
+              <X className="h-4 w-4" /> Cancel
+            </Button>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={() => setSelectMode(true)} className="gap-1.5">
+              <Layers className="h-4 w-4" /> Select to merge
+            </Button>
+          </div>
+        )}
+
         {/* Filter bar */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex flex-wrap gap-2">
@@ -267,7 +315,13 @@ export default function ReceiptInbox() {
                 key={item.id}
                 variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.28 } } }}
               >
-                <InboxItemCard item={item} onClick={setReviewItem} />
+                <InboxItemCard
+                  item={item}
+                  onClick={setReviewItem}
+                  selectable={selectMode}
+                  selected={selectedIds.has(item.id)}
+                  onToggleSelect={toggleSelect}
+                />
               </motion.div>
             ))}
           </motion.div>
@@ -280,6 +334,19 @@ export default function ReceiptInbox() {
           onClose={() => setReviewItem(null)}
           onConfirmed={handleConfirmed}
         />
+
+        {/* Merge dialog */}
+        {showMerge && selectedItems.length >= 2 && (
+          <InboxMergeDialog
+            items={selectedItems}
+            open={showMerge}
+            onClose={() => setShowMerge(false)}
+            onMerged={(primaryId) => {
+              queryClient.invalidateQueries({ queryKey: ["receiptInboxItems"] });
+              exitSelectMode();
+            }}
+          />
+        )}
       </div>
     </AnimatedPage>
   );

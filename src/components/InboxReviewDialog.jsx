@@ -12,10 +12,14 @@ import { PAID_BY_CODES, getCategoriesForClient, formatCurrency } from "@/lib/con
 import ClientSplitInput from "@/components/ClientSplitInput";
 import PersonAvatar from "@/components/PersonAvatar";
 import CategorySelectItem from "@/components/CategorySelectItem";
+import InboxFileViewer from "@/components/InboxFileViewer";
 
 export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) {
   const [form, setForm] = useState({});
   const [confirming, setConfirming] = useState(false);
+  const [localItem, setLocalItem] = useState(item);
+
+  useEffect(() => { setLocalItem(item); }, [item]);
 
   useEffect(() => {
     if (item) {
@@ -96,8 +100,27 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
     }
   };
 
+  const handleOCRFromFile = (data) => {
+    setForm(f => ({
+      ...f,
+      date: data.date || f.date,
+      description: data.description || data.supplier || f.description,
+      paid_amount: data.amount || f.paid_amount,
+      actual_cost: data.amount || f.actual_cost,
+      vat: data.vat ?? f.vat,
+      currency: data.currency || f.currency,
+      client_allocations: f.client_allocations.map(a => ({
+        ...a,
+        amount: Math.round(((data.amount || f.paid_amount || 0) * (a.percentage || 0) / 100) * 100) / 100,
+      })),
+    }));
+  };
+
   if (!item) return null;
-  const isPdf = item.mime_type === "application/pdf" || item.original_filename?.toLowerCase().endsWith(".pdf");
+  const displayItem = localItem || item;
+  const hasMultipleFiles = displayItem.receipt_files?.length > 1;
+  const primaryUrl = displayItem.primary_receipt_file_url || displayItem.public_receipt_url || displayItem.file_url;
+  const isPdf = displayItem.mime_type === "application/pdf" || displayItem.original_filename?.toLowerCase().endsWith(".pdf");
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -112,49 +135,58 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
         <div className="grid md:grid-cols-2 gap-5">
           {/* Left: receipt preview */}
           <div className="space-y-3">
-            <div
-              className="rounded-[14px] overflow-hidden flex items-center justify-center"
-              style={{ backgroundColor: "var(--bg-surface-2)", minHeight: 200, border: "1px solid var(--border-soft)" }}
-            >
-              {isPdf ? (
-                <div className="text-center p-6">
-                  <FileText className="h-12 w-12 mx-auto mb-2" style={{ color: "#FF5C7A" }} strokeWidth={1.5} />
-                  <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{item.original_filename}</p>
-                </div>
-              ) : item.file_url ? (
-                <img src={item.file_url} alt="Receipt" className="max-h-64 object-contain w-full" />
-              ) : null}
-            </div>
+            {/* Multi-file viewer or single preview */}
+            {hasMultipleFiles ? (
+              <InboxFileViewer
+                item={displayItem}
+                onFilesChanged={(newFiles) => setLocalItem(i => ({ ...i, receipt_files: newFiles }))}
+                onOCRComplete={handleOCRFromFile}
+              />
+            ) : (
+              <div
+                className="rounded-[14px] overflow-hidden flex items-center justify-center"
+                style={{ backgroundColor: "var(--bg-surface-2)", minHeight: 200, border: "1px solid var(--border-soft)" }}
+              >
+                {isPdf ? (
+                  <div className="text-center p-6">
+                    <FileText className="h-12 w-12 mx-auto mb-2" style={{ color: "#FF5C7A" }} strokeWidth={1.5} />
+                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{displayItem.original_filename}</p>
+                  </div>
+                ) : displayItem.file_url ? (
+                  <img src={displayItem.file_url} alt="Receipt" className="max-h-64 object-contain w-full" />
+                ) : null}
+              </div>
+            )}
 
-            {(item.public_receipt_url || item.file_url) && (
+            {primaryUrl && (
               <a
-                href={item.public_receipt_url || item.file_url}
+                href={primaryUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-xs font-medium transition-colors"
                 style={{ color: "#7F5BFF" }}
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                View full receipt
+                View {hasMultipleFiles ? "primary" : "full"} receipt
               </a>
             )}
 
             {/* OCR info */}
             <div className="rounded-[10px] p-3 text-xs space-y-1" style={{ backgroundColor: "var(--bg-surface-2)" }}>
               <div className="flex justify-between">
-                <span style={{ color: "var(--text-tertiary)" }}>Original file</span>
-                <span className="truncate ml-2" style={{ color: "var(--text-secondary)" }}>{item.original_filename}</span>
+                <span style={{ color: "var(--text-tertiary)" }}>Files</span>
+                <span style={{ color: "var(--text-secondary)" }}>{displayItem.receipt_files?.length || 1} attached</span>
               </div>
-              {item.ocr_confidence && (
+              {displayItem.ocr_confidence && (
                 <div className="flex justify-between">
                   <span style={{ color: "var(--text-tertiary)" }}>OCR confidence</span>
-                  <span style={{ color: item.ocr_confidence > 70 ? "#3DDC97" : "#FFB547" }}>{item.ocr_confidence}%</span>
+                  <span style={{ color: displayItem.ocr_confidence > 70 ? "#3DDC97" : "#FFB547" }}>{displayItem.ocr_confidence}%</span>
                 </div>
               )}
-              {item.drive_folder_path && (
+              {displayItem.drive_folder_path && (
                 <div className="flex justify-between gap-2">
                   <span style={{ color: "var(--text-tertiary)" }}>Drive location</span>
-                  <span className="text-right" style={{ color: "var(--text-secondary)" }}>{item.drive_folder_path}</span>
+                  <span className="text-right" style={{ color: "var(--text-secondary)" }}>{displayItem.drive_folder_path}</span>
                 </div>
               )}
             </div>

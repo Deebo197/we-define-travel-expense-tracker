@@ -219,6 +219,9 @@ Deno.serve(async (req) => {
     const desc = description || item.extracted_description || item.extracted_supplier || '';
 
     // --- STEP 5: Create the Expense ---
+    const primaryFileUrl = item.primary_receipt_file_url || item.file_url;
+    const primaryPublicUrl = item.public_receipt_url || item.file_url;
+
     const expense = await base44.asServiceRole.entities.Expense.create({
       date: date || item.extracted_date,
       description: desc,
@@ -228,8 +231,10 @@ Deno.serve(async (req) => {
       paid_by: paidBy,
       category: category || item.category || '',
       client_allocations: client_allocations || item.client_allocations || [],
-      receipt_file: item.file_url,
-      receipt_url: item.public_receipt_url || item.file_url,
+      receipt_file: primaryFileUrl,
+      receipt_url: primaryPublicUrl,
+      primary_receipt_file_url: primaryFileUrl,
+      receipt_files: item.receipt_files?.length > 0 ? item.receipt_files : undefined,
       receipt_code: item.receipt_code,
       reimbursement_required: ['CB','ST','DJ'].includes(paidBy),
       reimbursement_paid: false,
@@ -257,10 +262,12 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ReceiptConfirmationLock.delete(lockId);
     lockId = null;
 
-    // --- STEP 8: Move/rename file in Drive (non-fatal) ---
-    let publicUrl = item.public_receipt_url;
+    // --- STEP 8: Move/rename file(s) in Drive (non-fatal) ---
     try {
-      if (item.drive_file_id) {
+      const hasAnyDriveFile = item.drive_file_id ||
+        item.receipt_files?.some(f => f.drive_file_id);
+
+      if (hasAnyDriveFile) {
         const { accessToken } = await base44.asServiceRole.connectors.getConnection('googledrive');
         const authHeader = { Authorization: `Bearer ${accessToken}` };
 
@@ -270,32 +277,75 @@ Deno.serve(async (req) => {
         const monthId = await getOrCreateCachedFolder(base44, authHeader, monthFolder, yearId);
         const groupId = await getOrCreateCachedFolder(base44, authHeader, group, monthId);
 
-        const origExt = (item.original_filename || 'receipt').split('.').pop().toLowerCase();
-        const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
         const supplierPart = (item.extracted_supplier || desc).replace(/[^a-zA-Z0-9 \-]/g, '').trim().slice(0, 40);
-        const confirmedName = `${item.receipt_code} - ${paidBy} - ${supplierPart} - ${amt.toFixed(2)}.${safeExt}`;
+        const basePrefix = `${item.receipt_code} - ${paidBy} - ${supplierPart} - ${Number(amt).toFixed(2)}`;
 
-        const fileMetaRes = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${item.drive_file_id}?fields=parents`,
-          { headers: authHeader }
-        );
-        const fileMeta = await fileMetaRes.json();
-        const oldParents = (fileMeta.parents || []).join(',');
+        // Build list of drive files to move: from receipt_files if present, else fall back to single
+        const driveFiles = item.receipt_files?.length > 0
+          ? item.receipt_files.filter(f => f.drive_file_id)
+          : item.drive_file_id
+            ? [{ drive_file_id: item.drive_file_id, original_filename: item.original_filename, role: 'primary', sort_order: 0 }]
+            : [];
 
-        await fetch(
-          `https://www.googleapis.com/drive/v3/files/${item.drive_file_id}?addParents=${groupId}&removeParents=${oldParents}&fields=id,webViewLink`,
-          {
-            method: 'PATCH',
-            headers: { ...authHeader, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: confirmedName }),
+        const updatedFiles = [];
+        let primaryPublicUrlFinal = item.public_receipt_url;
+        let supportingCount = 0;
+
+        for (const f of driveFiles) {
+          const origExt = (f.original_filename || 'receipt').split('.').pop().toLowerCase();
+          const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
+
+          let label;
+          if (f.role === 'primary') {
+            label = 'Primary';
+          } else {
+            supportingCount++;
+            label = `Supporting ${supportingCount}`;
           }
-        );
+          const confirmedName = `${basePrefix} - ${label}.${safeExt}`;
 
-        publicUrl = item.public_receipt_url || `https://drive.google.com/file/d/${item.drive_file_id}/view`;
+          try {
+            const fileMetaRes = await fetch(
+              `https://www.googleapis.com/drive/v3/files/${f.drive_file_id}?fields=parents`,
+              { headers: authHeader }
+            );
+            const fileMeta = await fileMetaRes.json();
+            const oldParents = (fileMeta.parents || []).join(',');
+
+            await fetch(
+              `https://www.googleapis.com/drive/v3/files/${f.drive_file_id}?addParents=${groupId}&removeParents=${oldParents}&fields=id,webViewLink`,
+              {
+                method: 'PATCH',
+                headers: { ...authHeader, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: confirmedName }),
+              }
+            );
+
+            const filePublicUrl = `https://drive.google.com/file/d/${f.drive_file_id}/view`;
+            if (f.role === 'primary') primaryPublicUrlFinal = filePublicUrl;
+            updatedFiles.push({ ...f, public_receipt_url: filePublicUrl });
+          } catch (e) {
+            console.error(`Drive move failed for file ${f.drive_file_id}:`, e.message);
+            updatedFiles.push(f);
+          }
+        }
+
+        // Persist updated public URLs
+        const expenseUpdates = { receipt_url: primaryPublicUrlFinal };
+        const itemUpdates = { public_receipt_url: primaryPublicUrlFinal };
+
+        if (item.receipt_files?.length > 0) {
+          const mergedFiles = item.receipt_files.map(f => {
+            const updated = updatedFiles.find(u => u.drive_file_id === f.drive_file_id);
+            return updated ? { ...f, public_receipt_url: updated.public_receipt_url } : f;
+          });
+          expenseUpdates.receipt_files = mergedFiles;
+          itemUpdates.receipt_files = mergedFiles;
+        }
 
         await Promise.all([
-          base44.asServiceRole.entities.Expense.update(expense.id, { receipt_url: publicUrl }),
-          base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, { public_receipt_url: publicUrl }),
+          base44.asServiceRole.entities.Expense.update(expense.id, expenseUpdates),
+          base44.asServiceRole.entities.ReceiptInboxItem.update(inbox_item_id, itemUpdates),
         ]);
       }
     } catch (driveErr) {

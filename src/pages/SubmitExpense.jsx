@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
-import ReceiptCapture from "../components/ReceiptCapture";
+import MultiFileAttachment from "../components/MultiFileAttachment";
 import ClientSplitInput from "../components/ClientSplitInput";
 import CategorySelectItem from "../components/CategorySelectItem";
 import PersonAvatar from "../components/PersonAvatar";
@@ -45,6 +45,7 @@ export default function SubmitExpense() {
     category: "",
     receipt_file: "",
     receipt_url: "",
+    receipt_files: [],
     currency: "GBP",
     original_amount: "",
     exchange_rate: null,
@@ -65,6 +66,7 @@ export default function SubmitExpense() {
         vat: draftExpense.vat || false,
         receipt_file: draftExpense.receipt_file || f.receipt_file,
         receipt_url: draftExpense.receipt_url || f.receipt_url,
+        receipt_files: draftExpense.receipt_files || f.receipt_files,
       }));
     }
   }, [draftExpense]);
@@ -107,6 +109,16 @@ export default function SubmitExpense() {
     }));
   };
 
+  const handleFilesChange = (files) => {
+    const primaryFile = files.find(f => f.role === "primary");
+    setForm(f => ({
+      ...f,
+      receipt_files: files,
+      receipt_file: primaryFile?.file_url || f.receipt_file,
+      receipt_url: primaryFile?.file_url || f.receipt_url,
+    }));
+  };
+
   const handleAllocationsChange = (allocations) => {
     setForm(f => {
       // Reset category if primary client changes
@@ -136,6 +148,9 @@ export default function SubmitExpense() {
       const month = formatMonth(form.date);
       const year = dateObj.getFullYear();
 
+      const primaryFile = form.receipt_files.find(f => f.role === "primary");
+      const primaryUrl = primaryFile?.file_url || form.receipt_file;
+
       const expense = {
         date: form.date,
         description: form.description,
@@ -144,8 +159,10 @@ export default function SubmitExpense() {
         vat: form.vat,
         paid_by: form.paid_by,
         category: form.category || "",
-        receipt_file: form.receipt_file,
-        receipt_url: form.receipt_file,
+        receipt_file: primaryUrl,
+        receipt_url: primaryUrl,
+        primary_receipt_file_url: primaryUrl,
+        receipt_files: form.receipt_files.length > 0 ? form.receipt_files : undefined,
         client_allocations: form.client_allocations,
         receipt_code: receiptCode,
         reimbursement_required: isReimbursementRequired(form.paid_by),
@@ -206,7 +223,7 @@ export default function SubmitExpense() {
         >
           <p className="text-sm mb-2" style={{ color: "var(--text-secondary)" }}>Receipt Code</p>
           <p className="text-3xl font-bold tabular-nums mb-8" style={{ color: "#7F5BFF", letterSpacing: "-0.02em" }}>{success}</p>
-          <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
+          <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", receipt_files: [], client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
             Submit Another
           </Button>
         </motion.div>
@@ -228,12 +245,15 @@ export default function SubmitExpense() {
       )}
       
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Receipt Capture */}
-        <ReceiptCapture
-          onFileUploaded={(url) => updateField("receipt_file", url)}
-          onOCRComplete={handleOCR}
-          receiptUrl={form.receipt_file}
-        />
+        {/* Receipt Files */}
+        <div>
+          <Label className="text-sm font-medium mb-2 block">Receipt Files</Label>
+          <MultiFileAttachment
+            files={form.receipt_files}
+            onChange={handleFilesChange}
+            onOCRComplete={handleOCR}
+          />
+        </div>
 
         {/* Date */}
         <div>

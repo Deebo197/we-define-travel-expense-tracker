@@ -1,4 +1,4 @@
-import { Clock, CheckCircle2, AlertCircle, Loader2, FileText, Image, Eye } from "lucide-react";
+import { Clock, CheckCircle2, AlertCircle, Loader2, FileText, Image, Eye, Layers } from "lucide-react";
 import { formatCurrency, formatDateUK } from "@/lib/constants";
 
 const STATUS_CONFIG = {
@@ -9,26 +9,34 @@ const STATUS_CONFIG = {
   failed:       { label: "Failed",       icon: AlertCircle,   color: "#FF5C7A", bg: "rgba(255,92,122,0.12)" },
 };
 
-export default function InboxItemCard({ item, onClick }) {
+export default function InboxItemCard({ item, onClick, selectable, selected, onToggleSelect }) {
   const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.inbox;
   const Icon = cfg.icon;
   const isPdf = item.mime_type === "application/pdf" || item.original_filename?.toLowerCase().endsWith(".pdf");
+  const fileCount = item.receipt_files?.length || 1;
+  const isClickable = item.status === "needs_review" || item.status === "failed";
+
+  const handleClick = () => {
+    if (selectable) {
+      onToggleSelect?.(item.id);
+    } else if (isClickable) {
+      onClick(item);
+    }
+  };
 
   return (
     <div
-      onClick={() => (item.status === "needs_review" || item.status === "failed") && onClick(item)}
+      onClick={handleClick}
       className="rounded-[16px] p-4 transition-all duration-200 flex gap-3"
       style={{
-        backgroundColor: "var(--bg-surface)",
-        border: "1px solid var(--border-soft)",
-        cursor: (item.status === "needs_review" || item.status === "failed") ? "pointer" : "default",
+        backgroundColor: selected ? "rgba(127,91,255,0.08)" : "var(--bg-surface)",
+        border: selected ? "1.5px solid rgba(127,91,255,0.5)" : "1px solid var(--border-soft)",
+        cursor: selectable ? "pointer" : isClickable ? "pointer" : "default",
       }}
       onMouseEnter={(e) => {
-        if (item.status === "needs_review" || item.status === "failed") {
-          e.currentTarget.style.backgroundColor = "var(--bg-surface-2)";
-        }
+        if (selectable || isClickable) e.currentTarget.style.backgroundColor = selected ? "rgba(127,91,255,0.12)" : "var(--bg-surface-2)";
       }}
-      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--bg-surface)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "rgba(127,91,255,0.08)" : "var(--bg-surface)"; }}
     >
       {/* Thumbnail / icon */}
       <div
@@ -80,12 +88,25 @@ export default function InboxItemCard({ item, onClick }) {
         </div>
       </div>
 
-      {/* Review arrow */}
-      {(item.status === "needs_review" || item.status === "failed") && (
-        <div className="flex items-center self-center flex-shrink-0 ml-1">
-          <Eye className="h-4 w-4" style={{ color: "var(--text-tertiary)" }} />
-        </div>
-      )}
+      {/* Right side: file count badge + review arrow */}
+      <div className="flex flex-col items-end justify-between flex-shrink-0 ml-1">
+        {fileCount > 1 && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full mb-1"
+            style={{ backgroundColor: "rgba(61,220,151,0.1)", color: "#3DDC97" }}>
+            <Layers className="h-2.5 w-2.5" />{fileCount}
+          </span>
+        )}
+        {selectable ? (
+          <div
+            className="w-5 h-5 rounded-full border-2 flex items-center justify-center self-center"
+            style={{ borderColor: selected ? "#7F5BFF" : "var(--border-strong)", backgroundColor: selected ? "#7F5BFF" : "transparent" }}
+          >
+            {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+          </div>
+        ) : isClickable ? (
+          <Eye className="h-4 w-4 self-center" style={{ color: "var(--text-tertiary)" }} />
+        ) : null}
+      </div>
     </div>
   );
 }

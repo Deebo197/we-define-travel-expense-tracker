@@ -128,7 +128,12 @@ Deno.serve(async (req) => {
     // Mark as processing
     await base44.asServiceRole.entities.ReceiptInboxItem.update(inboxItemId, { status: 'processing' });
 
-    // --- OCR ---
+    // --- OCR: use primary file if multi-file, else the single file ---
+    const primaryFileUrl = item.primary_receipt_file_url || item.file_url;
+    const ocrFileUrl = item.receipt_files?.length > 0
+      ? (item.receipt_files.find(f => f.role === 'primary')?.file_url || primaryFileUrl)
+      : primaryFileUrl;
+
     let extracted = {};
     let ocrError = null;
     try {
@@ -145,7 +150,7 @@ Fields to extract:
 - confidence: A number 0-100 indicating your confidence in the extraction.
 
 Return only valid JSON with those exact keys.`,
-        file_urls: [item.file_url],
+        file_urls: [ocrFileUrl],
         response_json_schema: {
           type: 'object',
           properties: {
@@ -181,15 +186,41 @@ Return only valid JSON with those exact keys.`,
       const { inboxId, folderPath: fp } = await getInboxFolderId(base44, authHeader, extractedDate);
       folderPath = fp;
 
-      const origExt = (item.original_filename || 'receipt').split('.').pop().toLowerCase();
-      const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
-      const inboxFileName = `${item.receipt_code} - ${item.original_filename || 'receipt'}.${safeExt}`.replace(/\.{2,}/g, '.');
+      // For multi-file items: upload each file with Primary/Supporting labels
+      const receiptFiles = item.receipt_files?.length > 0 ? item.receipt_files : null;
 
-      const uploadData = await uploadFileToDrive(authHeader, item.file_url, inboxFileName, inboxId, item.mime_type);
-      if (uploadData.id) {
-        driveFileId = uploadData.id;
-        await makeFilePublic(authHeader, driveFileId);
-        publicUrl = uploadData.webViewLink || `https://drive.google.com/file/d/${driveFileId}/view`;
+      if (receiptFiles) {
+        let supportingCount = 0;
+        const updatedReceiptFiles = [];
+        for (const rf of receiptFiles) {
+          if (rf.drive_file_id) { updatedReceiptFiles.push(rf); continue; } // already uploaded
+          const origExt = (rf.original_filename || 'receipt').split('.').pop().toLowerCase();
+          const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
+          const label = rf.role === 'primary' ? 'Primary' : `Supporting ${++supportingCount}`;
+          const fname = `${item.receipt_code} - ${label} - ${rf.original_filename || 'receipt'}.${safeExt}`.replace(/\.{2,}/g, '.');
+          const uploadData = await uploadFileToDrive(authHeader, rf.file_url, fname, inboxId, rf.mime_type);
+          if (uploadData.id) {
+            await makeFilePublic(authHeader, uploadData.id);
+            const rfPublicUrl = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
+            if (rf.role === 'primary') { driveFileId = uploadData.id; publicUrl = rfPublicUrl; }
+            updatedReceiptFiles.push({ ...rf, drive_file_id: uploadData.id, public_receipt_url: rfPublicUrl });
+          } else {
+            updatedReceiptFiles.push(rf);
+          }
+        }
+        // Save updated receipt_files back
+        await base44.asServiceRole.entities.ReceiptInboxItem.update(inboxItemId, { receipt_files: updatedReceiptFiles });
+      } else {
+        // Single file
+        const origExt = (item.original_filename || 'receipt').split('.').pop().toLowerCase();
+        const safeExt = ['jpg','jpeg','png','gif','pdf','webp','heic'].includes(origExt) ? origExt : 'jpg';
+        const inboxFileName = `${item.receipt_code} - Primary - ${item.original_filename || 'receipt'}.${safeExt}`.replace(/\.{2,}/g, '.');
+        const uploadData = await uploadFileToDrive(authHeader, item.file_url, inboxFileName, inboxId, item.mime_type);
+        if (uploadData.id) {
+          driveFileId = uploadData.id;
+          await makeFilePublic(authHeader, driveFileId);
+          publicUrl = uploadData.webViewLink || `https://drive.google.com/file/d/${driveFileId}/view`;
+        }
       }
     } catch (driveErr) {
       console.error('Drive upload failed (non-fatal):', driveErr.message);
