@@ -113,10 +113,11 @@ Deno.serve(async (req) => {
     const payload = await req.json();
 
     const isAutomation = !!payload.event;
-    const entityName = isAutomation ? payload.event?.entity_name : payload.entity_type;
+    const entityName = isAutomation ? payload.event?.entity_name : (payload.entity_type || 'Expense');
     entityId = isAutomation ? payload.event?.entity_id : payload.entity_id;
     const data = isAutomation ? payload.data : payload;
-    entityType = entityName === 'Expense' ? 'expense' : 'mileage';
+    // Normalise: accept "Expense", "expense", "MileageJourney", "mileage"
+    entityType = (entityName === 'Expense' || entityName === 'expense') ? 'expense' : 'mileage';
 
     if (!data) return Response.json({ error: 'No data' }, { status: 400 });
 
