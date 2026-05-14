@@ -10,7 +10,7 @@ import { SkeletonCard, SkeletonRow } from "@/components/SkeletonCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ChevronRight, PlusCircle, FileX, RefreshCw, Inbox } from "lucide-react";
+import { AlertTriangle, ChevronRight, PlusCircle, FileX, RefreshCw, Inbox, Car } from "lucide-react";
 import CategoryBadge from "../components/CategoryBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import ExpenseSpendChart from "../components/ExpenseSpendChart";
@@ -90,13 +90,35 @@ export default function MyExpenses() {
     enabled: !!user,
   });
 
+  const { data: myMileage = [] } = useQuery({
+    queryKey: ["myMileage", user?.email, targetCode],
+    queryFn: async () => {
+      const staffCode = isAdmin && viewingCode ? viewingCode : user?.paid_by_code;
+      if (!staffCode) return [];
+      return base44.entities.MileageJourney.filter({ staff_member: staffCode }, "-date", 500);
+    },
+    enabled: !!user,
+  });
+
   const [filterMonth, setFilterMonth] = useState("all");
   const [filterClient, setFilterClient] = useState("all");
   const [quickFilter, setQuickFilter] = useState("all");
   const [selected, setSelected] = useState(null);
 
+  // Combine mileage journeys as expense-like rows
+  const mileageAsExpenses = myMileage.map(j => ({
+    ...j,
+    _isMileage: true,
+    paid_amount: j.total_cost,
+    description: j.purpose,
+    status: "confirmed",
+    receipt_file: j.receipt_file || null,
+    receipt_url: j.receipt_url || null,
+  }));
+
   const drafts = allExpenses.filter(e => e.status === "draft");
-  const confirmed = allExpenses.filter(e => e.status !== "draft");
+  const confirmed = [...allExpenses.filter(e => e.status !== "draft"), ...mileageAsExpenses]
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const months = useMemo(() => [...new Set(confirmed.map(e => e.month))].filter(Boolean), [confirmed]);
 
@@ -413,7 +435,10 @@ export default function MyExpenses() {
                 <span className="text-sm" style={{ color: "var(--text-tertiary)" }}>
                   {exp.client_allocations?.map(a => a.client_code).join(", ")}
                 </span>
-                <span className="text-sm truncate" style={{ color: "var(--text-secondary)" }}>{exp.description}</span>
+                <span className="text-sm truncate flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+                  {exp._isMileage && <Car className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "#7F5BFF" }} />}
+                  {exp.description}
+                </span>
                 <div className="text-right">
                   <span className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{formatCurrency(exp.paid_amount)}</span>
                   {exp.currency && exp.currency !== "GBP" && exp.original_amount && (
@@ -451,7 +476,10 @@ export default function MyExpenses() {
                     )}
                   </div>
                 </div>
-                <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>{exp.description}</p>
+                <p className="text-sm font-medium truncate flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
+                  {exp._isMileage && <Car className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "#7F5BFF" }} />}
+                  {exp.description}
+                </p>
                 <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
                   {exp.client_allocations?.map(a => a.client_code).join(", ")}
                 </p>

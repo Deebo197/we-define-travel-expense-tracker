@@ -32,7 +32,7 @@ export default function MileageLog() {
     queryFn: () => base44.entities.MileageJourney.list("-date", 500),
   });
 
-  const myJourneys = isAdmin ? journeys : journeys.filter(j => j.paid_by === user?.paid_by_code);
+  const myJourneys = isAdmin ? journeys : journeys.filter(j => j.staff_member === user?.paid_by_code);
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(getDefaultForm());
