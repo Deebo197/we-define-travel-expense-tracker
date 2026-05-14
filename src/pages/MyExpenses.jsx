@@ -93,9 +93,17 @@ export default function MyExpenses() {
   const { data: myMileage = [] } = useQuery({
     queryKey: ["myMileage", user?.email, targetCode],
     queryFn: async () => {
-      const staffCode = isAdmin && viewingCode ? viewingCode : user?.paid_by_code;
-      if (!staffCode) return [];
-      return base44.entities.MileageJourney.filter({ staff_member: staffCode }, "-date", 500);
+      if (isAdmin && viewingCode) {
+        return base44.entities.MileageJourney.filter({ staff_member: viewingCode }, "-date", 500);
+      }
+      // Non-admin: fetch by both company and personal codes, merge and deduplicate
+      const codes = [user?.paid_by_code, user?.paid_by_code_personal].filter(Boolean);
+      if (!codes.length) return [];
+      const results = await Promise.all(
+        codes.map(c => base44.entities.MileageJourney.filter({ staff_member: c }, "-date", 500))
+      );
+      const seen = new Set();
+      return results.flat().filter(j => seen.has(j.id) ? false : seen.add(j.id));
     },
     enabled: !!user,
   });
