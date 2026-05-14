@@ -33,7 +33,13 @@ export default function MileageLog() {
   });
 
   const userCodes = [user?.paid_by_code, user?.paid_by_code_personal].filter(Boolean);
-  const myJourneys = isAdmin ? journeys : journeys.filter(j => userCodes.includes(j.staff_member));
+  const myJourneys = isAdmin
+    ? journeys
+    : journeys.filter(j =>
+        userCodes.includes(j.staff_member) ||
+        j.created_by === user?.email ||
+        j.staff_member === user?.email
+      );
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(getDefaultForm());
