@@ -1,0 +1,11 @@
+{
+  "type": "outlook",
+  "scopes": [
+    "Mail.Read",
+    "Mail.ReadBasic",
+    "User.Read",
+    "profile",
+    "openid",
+    "email"
+  ]
+}
