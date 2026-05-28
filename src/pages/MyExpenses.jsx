@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, ChevronRight, PlusCircle, FileX, RefreshCw, Inbox, Car, Pencil } from "lucide-react";
-import EditExpenseDialog from "@/components/EditExpenseDialog.jsx";
+import EditExpenseDialog from "@/components/EditExpenseDialog";
 import CategoryBadge from "../components/CategoryBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import ExpenseSpendChart from "../components/ExpenseSpendChart";
