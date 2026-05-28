@@ -10,7 +10,8 @@ import { SkeletonCard, SkeletonRow } from "@/components/SkeletonCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ChevronRight, PlusCircle, FileX, RefreshCw, Inbox, Car } from "lucide-react";
+import { AlertTriangle, ChevronRight, PlusCircle, FileX, RefreshCw, Inbox, Car, Pencil } from "lucide-react";
+import EditExpenseDialog from "@/components/EditExpenseDialog.jsx";
 import CategoryBadge from "../components/CategoryBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import ExpenseSpendChart from "../components/ExpenseSpendChart";
@@ -112,6 +113,7 @@ export default function MyExpenses() {
   const [filterClient, setFilterClient] = useState("all");
   const [quickFilter, setQuickFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [editingExpense, setEditingExpense] = useState(null);
 
   // Combine mileage journeys as expense-like rows
   const mileageAsExpenses = myMileage.map(j => ({
@@ -505,9 +507,14 @@ export default function MyExpenses() {
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
-              {/* Status badge at top */}
-              <div className="flex items-center gap-2 flex-wrap">
+              {/* Status badge + edit button */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <ExpenseStatusBadge expense={selected} size="md" />
+                {!selected._isMileage && (
+                  <Button size="sm" variant="outline" onClick={() => { setEditingExpense(selected); setSelected(null); }}>
+                    <Pencil className="h-4 w-4" /> Edit
+                  </Button>
+                )}
               </div>
 
               {/* Missing receipt warning */}
@@ -565,6 +572,15 @@ export default function MyExpenses() {
           )}
         </DialogContent>
       </Dialog>
+
+      {editingExpense && (
+        <EditExpenseDialog
+          expense={editingExpense}
+          open={!!editingExpense}
+          onClose={() => setEditingExpense(null)}
+          queryKeys={[["myExpenses", user?.email, targetCode]]}
+        />
+      )}
     </div>
     </AnimatedPage>
   );
