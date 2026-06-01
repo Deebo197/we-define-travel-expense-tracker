@@ -10,18 +10,18 @@ const COLS = [
   { letter: "A", width: 8 },
   { letter: "B", width: 19 },
   { letter: "C", width: 21 },
-  { letter: "D", width: 44 },
-  { letter: "E", width: 15 },
-  { letter: "F", width: 12 },
-  { letter: "G", width: 16 },
-  { letter: "H", width: 13 },
-  { letter: "I", width: 16 },
-  { letter: "J", width: 16 },
-  { letter: "K", width: 14 },
-  { letter: "L", width: 13 },
-  { letter: "M", width: 15 },
-  { letter: "N", width: 16 },
-  { letter: "O", width: 16 },
+  { letter: "D", width: 65.33 },
+  { letter: "E", width: 26.33 },
+  { letter: "F", width: 14.5 },
+  { letter: "G", width: 26 },
+  { letter: "H", width: 17.66 },
+  { letter: "I", width: 21.5 },
+  { letter: "J", width: 23.5 },
+  { letter: "K", width: 20.5 },
+  { letter: "L", width: 17 },
+  { letter: "M", width: 24.33 },
+  { letter: "N", width: 20.5 },
+  { letter: "O", width: 20.16 },
 ];
 
 const HEADER_ROW = [
@@ -70,6 +70,10 @@ function cell(row, col, value, style = 0) {
     return `<c r="${cellRef(row, col)}"${style ? ` s="${style}"` : ""}/>`;
   }
 
+  if (typeof value === "object" && value.text !== undefined) {
+    return `<c r="${cellRef(row, col)}"${style ? ` s="${style}"` : ""} t="inlineStr"><is><t>${escapeXml(value.text)}</t></is></c>`;
+  }
+
   if (typeof value === "object" && value.formula) {
     const formulaValue = value.value === undefined ? "" : `<v>${value.value}</v>`;
     return `<c r="${cellRef(row, col)}"${style ? ` s="${style}"` : ""}><f>${escapeXml(value.formula)}</f>${formulaValue}</c>`;
@@ -84,7 +88,10 @@ function cell(row, col, value, style = 0) {
 
 function row(rowNumber, values, style = 0, height = null, stylesByCol = {}) {
   const cells = values
-    .map((value, idx) => cell(rowNumber, idx + 1, value, stylesByCol[idx + 1] ?? style))
+    .map((value, idx) => {
+      const colStyle = value?.hyperlink ? 11 : style;
+      return cell(rowNumber, idx + 1, value, stylesByCol[idx + 1] ?? colStyle);
+    })
     .join("");
   const heightAttrs = height ? ` ht="${height}" customHeight="1"` : "";
   return `<row r="${rowNumber}"${heightAttrs}>${cells}</row>`;
@@ -105,9 +112,22 @@ function getCategoryColumn(category) {
   return CATEGORY_COLUMNS[category] || CATEGORY_COLUMNS["Client Expenses - Miscellaneous"];
 }
 
+function getReceiptUrl(item) {
+  const primaryReceipt = item.receipt_files?.find(file => file.role === "primary") || item.receipt_files?.[0];
+  return item.primary_receipt_file_url
+    || item.receipt_url
+    || item.receipt_file
+    || primaryReceipt?.public_receipt_url
+    || primaryReceipt?.file_url
+    || item.route_image_url
+    || "";
+}
+
 function normaliseRows(items) {
   return items.map((item, index) => {
     const amount = money(item.clientAmount ?? item.paid_amount ?? item.total_cost);
+    const receiptCode = item.receipt_code || item.route_image_code || "";
+    const receiptUrl = getReceiptUrl(item);
     const values = Array(15).fill("");
     values[0] = index + 1;
     values[1] = formatDateUK(item.date);
@@ -117,8 +137,8 @@ function normaliseRows(items) {
     values[getCategoryColumn(item.category) - 1] = amount;
     values[11] = 1;
     values[12] = amount;
-    values[13] = item.receipt_code || item.route_image_code || "";
-    return values;
+    values[13] = receiptUrl && receiptCode ? { text: receiptCode, hyperlink: receiptUrl } : receiptCode;
+    return { values, receiptUrl };
   });
 }
 
@@ -143,9 +163,14 @@ function buildSheetXml({ rows, dateRange, submittedBy }) {
   sheetRows.push(row(14, ["", "", "", "", "", "", "", "", "", "", "", "", "", "Receipt", "WHT"], 4, 34));
 
   const detailRows = normaliseRows(rows);
+  const hyperlinks = [];
   for (let i = 0; i < itemRows; i += 1) {
     const rowNumber = firstItemRow + i;
-    const values = detailRows[i] || [i + 1, "", "", "", "", "GBP", "", "", "", "", "", 1, "", "", ""];
+    const detail = detailRows[i];
+    const values = detail?.values || [i + 1, "", "", "", "", "GBP", "", "", "", "", "", 1, "", "", ""];
+    if (detail?.receiptUrl) {
+      hyperlinks.push({ ref: `N${rowNumber}`, id: `rId${hyperlinks.length + 2}`, target: detail.receiptUrl });
+    }
     sheetRows.push(row(rowNumber, values, 5, 22, {
       5: 6,
       7: 6,
@@ -210,7 +235,11 @@ function buildSheetXml({ rows, dateRange, submittedBy }) {
     `A${certRow}:O${certRow + 2}`,
   ];
 
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  const hyperlinkXml = hyperlinks.length
+    ? `<hyperlinks>${hyperlinks.map(link => `<hyperlink ref="${link.ref}" r:id="${link.id}"/>`).join("")}</hyperlinks>`
+    : "";
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
   <dimension ref="A1:O${lastRow}"/>
@@ -219,10 +248,20 @@ function buildSheetXml({ rows, dateRange, submittedBy }) {
   <cols>${COLS.map((col, index) => `<col min="${index + 1}" max="${index + 1}" width="${col.width}" customWidth="1"/>`).join("")}</cols>
   <sheetData>${sheetRows.join("")}</sheetData>
   <mergeCells count="${merges.length}">${merges.map(ref => `<mergeCell ref="${ref}"/>`).join("")}</mergeCells>
+  ${hyperlinkXml}
   <printOptions horizontalCentered="1"/>
   <pageMargins left="0.47" right="0.25" top="0.42" bottom="0.36" header="0.3" footer="0.3"/>
   <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
+  <drawing r:id="rId1"/>
 </worksheet>`;
+
+  const sheetRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>
+  ${hyperlinks.map(link => `<Relationship Id="${link.id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${escapeXml(link.target)}" TargetMode="External"/>`).join("")}
+</Relationships>`;
+
+  return { sheetXml, sheetRelsXml };
 }
 
 function getLastRow(rowCount) {
@@ -238,11 +277,12 @@ function buildStylesXml() {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <numFmts count="1"><numFmt numFmtId="164" formatCode="£#,##0.00;[Red](£#,##0.00);-"/></numFmts>
-  <fonts count="4">
+  <fonts count="5">
     <font><sz val="11"/><name val="Calibri"/></font>
     <font><b/><sz val="20"/><name val="Aleo"/></font>
     <font><b/><sz val="14"/><name val="Aleo"/></font>
     <font><b/><sz val="16"/><name val="Aleo"/></font>
+    <font><u/><sz val="14"/><color rgb="FF0563C1"/><name val="Aleo"/></font>
   </fonts>
   <fills count="4">
     <fill><patternFill patternType="none"/></fill>
@@ -256,7 +296,7 @@ function buildStylesXml() {
     <border><left style="thin"/><right style="thin"/><top style="medium"/><bottom style="medium"/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="11">
+  <cellXfs count="12">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
@@ -268,6 +308,7 @@ function buildStylesXml() {
     <xf numFmtId="164" fontId="3" fillId="3" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -279,6 +320,44 @@ function buildWorkbookXml(lastRow) {
   <sheets><sheet name="FORM" sheetId="1" r:id="rId1"/></sheets>
   <definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">'FORM'!$A$1:$O$${lastRow}</definedName></definedNames>
 </workbook>`;
+}
+
+function buildDrawingXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <xdr:twoCellAnchor editAs="oneCell">
+    <xdr:from><xdr:col>0</xdr:col><xdr:colOff>50000</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>50000</xdr:rowOff></xdr:from>
+    <xdr:to><xdr:col>2</xdr:col><xdr:colOff>450000</xdr:colOff><xdr:row>6</xdr:row><xdr:rowOff>50000</xdr:rowOff></xdr:to>
+    <xdr:pic>
+      <xdr:nvPicPr>
+        <xdr:cNvPr id="2" name="SO Maldives Logo"/>
+        <xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>
+      </xdr:nvPicPr>
+      <xdr:blipFill>
+        <a:blip r:embed="rId1"/>
+        <a:stretch><a:fillRect/></a:stretch>
+      </xdr:blipFill>
+      <xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>
+    </xdr:pic>
+    <xdr:clientData/>
+  </xdr:twoCellAnchor>
+</xdr:wsDr>`;
+}
+
+function buildDrawingRelsXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/so-maldives-logo.jpg"/>
+</Relationships>`;
+}
+
+async function loadLogoBytes(logoBytes) {
+  if (logoBytes) return logoBytes;
+  const response = await fetch("/so-maldives-logo.jpg");
+  if (!response.ok) {
+    throw new Error("Could not load SO/Maldives logo for Excel export");
+  }
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 function crc32(bytes) {
@@ -311,7 +390,7 @@ function encodeZip(files) {
 
   files.forEach(({ name, content }) => {
     const nameBytes = encoder.encode(name);
-    const contentBytes = encoder.encode(content);
+    const contentBytes = typeof content === "string" ? encoder.encode(content) : new Uint8Array(content);
     const crc = crc32(contentBytes);
     const local = [];
     writeUint32(local, 0x04034b50);
@@ -366,14 +445,15 @@ function encodeZip(files) {
   });
 }
 
-export function buildSoMaldivesExcelBlob({ reportData, dateRange }) {
+export async function buildSoMaldivesExcelBlob({ reportData, dateRange, logoBytes }) {
   const rows = [...reportData].sort((a, b) => new Date(a.date) - new Date(b.date));
   const lastRow = getLastRow(rows.length);
-  const sheetXml = buildSheetXml({
+  const { sheetXml, sheetRelsXml } = buildSheetXml({
     rows,
     dateRange,
     submittedBy: rows.find(item => item.submitted_by_name)?.submitted_by_name || "",
   });
+  const resolvedLogoBytes = await loadLogoBytes(logoBytes);
 
   const files = [
     {
@@ -382,9 +462,11 @@ export function buildSoMaldivesExcelBlob({ reportData, dateRange }) {
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="jpg" ContentType="image/jpeg"/>
   <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
 </Types>`,
@@ -411,6 +493,10 @@ export function buildSoMaldivesExcelBlob({ reportData, dateRange }) {
 </Relationships>`,
     },
     { name: "xl/worksheets/sheet1.xml", content: sheetXml },
+    { name: "xl/worksheets/_rels/sheet1.xml.rels", content: sheetRelsXml },
+    { name: "xl/drawings/drawing1.xml", content: buildDrawingXml() },
+    { name: "xl/drawings/_rels/drawing1.xml.rels", content: buildDrawingRelsXml() },
+    { name: "xl/media/so-maldives-logo.jpg", content: resolvedLogoBytes },
     { name: "xl/styles.xml", content: buildStylesXml() },
     {
       name: "docProps/core.xml",
@@ -433,8 +519,8 @@ export function buildSoMaldivesExcelBlob({ reportData, dateRange }) {
   return encodeZip(files);
 }
 
-export function downloadSoMaldivesExcel({ reportData, dateRange, dateFrom, dateTo }) {
-  const blob = buildSoMaldivesExcelBlob({ reportData, dateRange });
+export async function downloadSoMaldivesExcel({ reportData, dateRange, dateFrom, dateTo }) {
+  const blob = await buildSoMaldivesExcelBlob({ reportData, dateRange });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

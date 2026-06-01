@@ -100,8 +100,13 @@ export default function ClientReport() {
     setGenerating(false);
   };
 
-  const handleDownloadSoMaldivesExcel = () => {
-    downloadSoMaldivesExcel({ reportData, dateRange, dateFrom, dateTo });
+  const handleDownloadSoMaldivesExcel = async () => {
+    setGenerating(true);
+    try {
+      await downloadSoMaldivesExcel({ reportData, dateRange, dateFrom, dateTo });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
