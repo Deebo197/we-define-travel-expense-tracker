@@ -230,6 +230,7 @@ function buildSheetXml({ rows, dateRange, submittedBy }) {
     "K13:K14",
     "L13:L14",
     "M13:M14",
+    ...Array.from({ length: itemRows }, (_, index) => `C${firstItemRow + index}:D${firstItemRow + index}`),
     `A${totalRow}:F${totalRow}`,
     `A${advanceStart}:N${advanceStart}`,
     `A${certRow}:O${certRow + 2}`,
