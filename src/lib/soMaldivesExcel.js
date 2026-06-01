@@ -326,9 +326,9 @@ function buildWorkbookXml(lastRow) {
 function buildDrawingXml() {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <xdr:twoCellAnchor editAs="oneCell">
+  <xdr:oneCellAnchor>
     <xdr:from><xdr:col>0</xdr:col><xdr:colOff>50000</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>50000</xdr:rowOff></xdr:from>
-    <xdr:to><xdr:col>2</xdr:col><xdr:colOff>450000</xdr:colOff><xdr:row>6</xdr:row><xdr:rowOff>50000</xdr:rowOff></xdr:to>
+    <xdr:ext cx="1250000" cy="1161320"/>
     <xdr:pic>
       <xdr:nvPicPr>
         <xdr:cNvPr id="2" name="SO Maldives Logo"/>
@@ -341,7 +341,7 @@ function buildDrawingXml() {
       <xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>
     </xdr:pic>
     <xdr:clientData/>
-  </xdr:twoCellAnchor>
+  </xdr:oneCellAnchor>
 </xdr:wsDr>`;
 }
 
