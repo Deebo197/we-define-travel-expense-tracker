@@ -142,7 +142,7 @@ function normaliseRows(items) {
   });
 }
 
-function buildSheetXml({ rows, dateRange, submittedBy }) {
+function buildSheetXml({ rows, dateRange }) {
   const itemRows = Math.max(rows.length, 10);
   const firstItemRow = 15;
   const totalRow = firstItemRow + itemRows;
@@ -154,11 +154,11 @@ function buildSheetXml({ rows, dateRange, submittedBy }) {
   const sheetRows = [];
   sheetRows.push(row(1, ["EXPENSES CLAIM SUMMARY / RECEIPT FORM", "", "", "", "", "", "", "", "", "", "", "", "", "", ""], 1, 24));
   sheetRows.push(row(2, Array(15).fill(""), 0, 9));
-  sheetRows.push(row(7, ["Name: Dream Islands Development 3 Pvt., Ltd", "", "", "", "", "", "Name :", submittedBy || "", "", "", "Travel Period:", dateRange || "", "", "", ""], 2, 27, { 7: 3, 11: 3 }));
-  sheetRows.push(row(8, ["Address: H. Millenia Tower, #02-01,", "", "", "", "", "", "Position:", "", "", "", "", "", "", "", ""], 2, 27, { 7: 3 }));
-  sheetRows.push(row(9, ["10 Ameer Ahmed Magu, K. Male' 20026 Maldives", "", "", "", "", "", "Department :", "", "", "", "Date Submitted :", formatDateUK(new Date().toISOString()), "", "", ""], 2, 27, { 7: 3, 11: 3 }));
-  sheetRows.push(row(10, ["TIN: 1111521GST501", "", "", "", "", "", "Destination :", "", "", "", "", "", "", "", ""], 2, 27, { 7: 3 }));
-  sheetRows.push(row(11, ["", "", "", "", "", "", "Reason for visit:", "", "", "", "", "", "", "", ""], 2, 30, { 7: 3 }));
+  sheetRows.push(row(7, ["Name: Dream Islands Development 3 Pvt., Ltd", "", "", "", "", "", "Name :", "We Define Travel", "", "", "Travel Period:", dateRange || "", "", "", ""], 2, 27, { 7: 3, 11: 3 }));
+  sheetRows.push(row(8, ["Address: H. Millenia Tower, #02-01,", "", "", "", "", "", "Position:", "UK Sales Office", "", "", "", "", "", "", ""], 2, 27, { 7: 3 }));
+  sheetRows.push(row(9, ["10 Ameer Ahmed Magu, K. Male' 20026 Maldives", "", "", "", "", "", "Department :", "NA", "", "", "Date Submitted :", formatDateUK(new Date().toISOString()), "", "", ""], 2, 27, { 7: 3, 11: 3 }));
+  sheetRows.push(row(10, ["TIN: 1111521GST501", "", "", "", "", "", "Destination :", "UK", "", "", "", "", "", "", ""], 2, 27, { 7: 3 }));
+  sheetRows.push(row(11, ["", "", "", "", "", "", "Reason for visit:", "Monthly Sales Costs", "", "", "", "", "", "", ""], 2, 30, { 7: 3 }));
   sheetRows.push(row(13, HEADER_ROW, 4, 34));
   sheetRows.push(row(14, ["", "", "", "", "", "", "", "", "", "", "", "", "", "Receipt", "WHT"], 4, 34));
 
@@ -452,7 +452,6 @@ export async function buildSoMaldivesExcelBlob({ reportData, dateRange, logoByte
   const { sheetXml, sheetRelsXml } = buildSheetXml({
     rows,
     dateRange,
-    submittedBy: rows.find(item => item.submitted_by_name)?.submitted_by_name || "",
   });
   const resolvedLogoBytes = await loadLogoBytes(logoBytes);
 
