@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, FileDown, Eye } from "lucide-react";
 import { CLIENT_CODES, getClientName, formatCurrency, formatForeignCurrency, formatDateUK, COMPANY_INFO } from "@/lib/constants";
+import { downloadSoMaldivesExcel } from "@/lib/soMaldivesExcel";
 
 export default function ClientReport() {
   const [clientCode, setClientCode] = useState("");
@@ -99,6 +100,10 @@ export default function ClientReport() {
     setGenerating(false);
   };
 
+  const handleDownloadSoMaldivesExcel = () => {
+    downloadSoMaldivesExcel({ reportData, dateRange, dateFrom, dateTo });
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Client Report</h1>
@@ -132,7 +137,18 @@ export default function ClientReport() {
       {/* Preview */}
       {showPreview && (
         <>
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-3 mb-4">
+            {clientCode === "SO" && (
+              <Button
+                variant="outline"
+                onClick={handleDownloadSoMaldivesExcel}
+                disabled={generating || reportData.length === 0}
+                className="gap-1.5"
+              >
+                <FileDown className="h-4 w-4" />
+                Download SO/Maldives Excel
+              </Button>
+            )}
             <Button onClick={handleDownload} disabled={generating} className="gap-1.5">
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
               Download PDF
