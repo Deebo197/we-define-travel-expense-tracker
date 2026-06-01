@@ -179,6 +179,11 @@
       "type": "boolean",
       "title": "Drive Sync Failed",
       "default": false
+    },
+    "is_admin_only_duplicate": {
+      "type": "boolean",
+      "title": "Admin Only Duplicate",
+      "default": false
     }
   },
   "required": [
@@ -193,15 +198,26 @@
     "read": {
       "$or": [
         {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "data.submitted_by": "{{user.email}}"
-        },
-        {
           "user_condition": {
             "role": "admin"
           }
+        },
+        {
+          "$and": [
+            {
+              "$or": [
+                {
+                  "created_by": "{{user.email}}"
+                },
+                {
+                  "data.submitted_by": "{{user.email}}"
+                }
+              ]
+            },
+            {
+              "data.is_admin_only_duplicate": false
+            }
+          ]
         }
       ]
     },

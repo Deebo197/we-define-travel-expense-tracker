@@ -61,6 +61,33 @@ export default function AllExpenses() {
     onError: (err) => toast.error(err.message || "Failed to delete expenses"),
   });
 
+  const duplicateToWD1 = useMutation({
+    mutationFn: async (ids) => {
+      for (const id of ids) {
+        const exp = expenses.find(e => e.id === id);
+        if (!exp) continue;
+        const { id: _id, created_date, updated_date, created_by_id, ...rest } = exp;
+        await base44.entities.Expense.create({
+          ...rest,
+          paid_by: "WD1",
+          is_admin_only_duplicate: true,
+          receipt_code: undefined,
+          receipt_file: undefined,
+          receipt_url: undefined,
+          primary_receipt_file_url: undefined,
+          receipt_files: [],
+          drive_sync_failed: false,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
+      setSelectedIds([]);
+      toast.success(`Duplicated ${selectedIds.length} expense(s) to WD1`);
+    },
+    onError: (err) => toast.error(err.message || "Failed to duplicate expenses"),
+  });
+
   const saveEdit = useMutation({
     mutationFn: async ({ id, data }) => {
       await base44.entities.Expense.update(id, data);
@@ -119,6 +146,10 @@ export default function AllExpenses() {
                 <Pencil className="h-4 w-4 mr-1" /> Edit
               </Button>
             )}
+            <Button size="sm" variant="outline" onClick={() => { if (confirm(`Duplicate ${selectedIds.length} expense(s) to WD1 (admin only)?`)) duplicateToWD1.mutate(selectedIds); }} disabled={duplicateToWD1.isPending}>
+              {duplicateToWD1.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+              Duplicate to WD1
+            </Button>
             <Button size="sm" variant="destructive" onClick={() => { if (confirm(`Delete ${selectedIds.length} expense(s)?`)) deleteExpenses.mutate(selectedIds); }} disabled={deleteExpenses.isPending}>
               <Trash2 className="h-4 w-4 mr-1" /> Delete {selectedIds.length}
             </Button>
