@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil, AlertTriangle } from "lucide-react";
+import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil, AlertTriangle, Copy } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
 import CategorySelectItem from "../components/CategorySelectItem";
