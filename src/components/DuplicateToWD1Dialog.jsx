@@ -30,17 +30,12 @@ export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
 
   const createDuplicate = useMutation({
     mutationFn: async (data) => {
-      const { id: _id, created_date, updated_date, created_by_id, receipt_code, receipt_file, receipt_url, primary_receipt_file_url, drive_sync_failed, ...rest } = expense;
+      const { id: _id, created_date, updated_date, created_by_id, drive_sync_failed, ...rest } = expense;
       await base44.entities.Expense.create({
         ...rest,
         ...data,
         paid_by: "WD1",
         is_admin_only_duplicate: true,
-        receipt_code: undefined,
-        receipt_file: undefined,
-        receipt_url: undefined,
-        primary_receipt_file_url: undefined,
-        receipt_files: [],
         drive_sync_failed: false,
         reimbursement_required: isReimbursementRequired("WD1"),
       });
