@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Paperclip } from "lucide-react";
 import CategorySelectItem from "@/components/CategorySelectItem";
 import ClientSplitInput from "@/components/ClientSplitInput";
 import { PAID_BY_CODES, getCategoriesForClient, isReimbursementRequired } from "@/lib/constants";
@@ -96,6 +96,34 @@ export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Receipt info from original — read only */}
+          {(expense.receipt_code || (expense.receipt_files?.length > 0) || expense.primary_receipt_file_url) && (
+            <div className="border border-border rounded-xl p-3 space-y-2 bg-muted/30">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Paperclip className="h-4 w-4" />
+                Attached Receipts (carried over)
+                {expense.receipt_code && (
+                  <span className="ml-auto font-mono text-xs bg-muted px-2 py-0.5 rounded">{expense.receipt_code}</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(expense.receipt_files?.length > 0 ? expense.receipt_files : expense.primary_receipt_file_url ? [{ file_url: expense.primary_receipt_file_url, role: "primary" }] : []).map((rf, i) => {
+                  const url = rf.public_receipt_url || rf.file_url;
+                  const isPdf = rf.mime_type === "application/pdf" || url?.toLowerCase().endsWith(".pdf");
+                  return isPdf ? (
+                    <a key={i} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-primary underline bg-muted px-2 py-1.5 rounded-lg">
+                      <Paperclip className="h-3 w-3" /> {rf.original_filename || `Receipt ${i + 1}`}
+                    </a>
+                  ) : (
+                    <a key={i} href={url} target="_blank" rel="noreferrer">
+                      <img src={url} alt={`Receipt ${i + 1}`} className="h-20 w-20 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-border pt-4">
             <Label className="text-sm font-semibold mb-3 block">Client Allocation</Label>
