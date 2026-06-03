@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Paperclip, Upload, X, ExternalLink } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import CategorySelectItem from "@/components/CategorySelectItem";
 import ClientSplitInput from "@/components/ClientSplitInput";
+import MultiFileAttachment from "@/components/MultiFileAttachment";
 import { PAID_BY_CODES, getCategoriesForClient, isReimbursementRequired } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -42,40 +43,18 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
     year: expense?.year || null,
   }));
 
-  const [uploadingFile, setUploadingFile] = useState(false);
-
   const primaryClient = form.client_allocations?.[0]?.client_code;
   const categories = primaryClient ? getCategoriesForClient(primaryClient) : [];
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingFile(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const isPrimary = form.receipt_files.length === 0 && !form.primary_receipt_file_url;
-    const newFile = {
-      file_url,
-      public_receipt_url: file_url,
-      original_filename: file.name,
-      mime_type: file.type,
-      role: isPrimary ? "primary" : "supporting",
-      sort_order: form.receipt_files.length,
-    };
+  const handleFilesChange = (files) => {
+    const primary = files.find(f => f.role === "primary");
     setForm(f => ({
       ...f,
-      receipt_files: [...f.receipt_files, newFile],
-      primary_receipt_file_url: isPrimary ? file_url : f.primary_receipt_file_url,
+      receipt_files: files,
+      primary_receipt_file_url: primary?.file_url || f.primary_receipt_file_url,
+      receipt_file: primary?.file_url || f.receipt_file,
+      receipt_url: primary?.file_url || f.receipt_url,
     }));
-    setUploadingFile(false);
-    e.target.value = "";
-  };
-
-  const removeReceiptFile = (index) => {
-    setForm(f => {
-      const updated = f.receipt_files.filter((_, i) => i !== index);
-      const newPrimary = updated.find(rf => rf.role === "primary")?.file_url || updated[0]?.file_url || "";
-      return { ...f, receipt_files: updated, primary_receipt_file_url: newPrimary };
-    });
   };
 
   const saveEdit = useMutation({
@@ -222,63 +201,16 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
           </div>
 
           {/* Receipt Files */}
-          <div className="border border-border rounded-xl p-3 space-y-3 bg-muted/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Paperclip className="h-4 w-4" />
-                Receipt Files
-              </div>
-              <div>
-                <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileUpload} />
-                <Button type="button" size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}>
-                  {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-                  Add Receipt
-                </Button>
-              </div>
-            </div>
-
-            {form.receipt_files.length === 0 && !form.primary_receipt_file_url && (
-              <p className="text-xs text-muted-foreground">No receipt files attached.</p>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {(form.receipt_files.length > 0
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Receipt Files</Label>
+            <MultiFileAttachment
+              files={form.receipt_files.length > 0
                 ? form.receipt_files
                 : form.primary_receipt_file_url
-                  ? [{ file_url: form.primary_receipt_file_url, public_receipt_url: form.primary_receipt_file_url, role: "primary" }]
-                  : []
-              ).map((rf, i) => {
-                const url = rf.public_receipt_url || rf.file_url;
-                const isPdf = rf.mime_type === "application/pdf" || url?.toLowerCase().endsWith(".pdf");
-                return (
-                  <div key={i} className="relative group">
-                    {isPdf ? (
-                      <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-primary underline bg-muted px-2 py-2 rounded-lg max-w-[140px] truncate">
-                        <Paperclip className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{rf.original_filename || `Receipt ${i + 1}`}</span>
-                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                      </a>
-                    ) : (
-                      <a href={url} target="_blank" rel="noreferrer">
-                        <img src={url} alt={`Receipt ${i + 1}`} className="h-20 w-20 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity" />
-                      </a>
-                    )}
-                    {form.receipt_files.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => removeReceiptFile(i)}
-                        className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                    {rf.role === "primary" && (
-                      <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-black/60 text-white rounded-b-lg">Primary</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  ? [{ file_url: form.primary_receipt_file_url, public_receipt_url: form.primary_receipt_file_url, role: "primary", original_filename: "Existing receipt" }]
+                  : []}
+              onChange={handleFilesChange}
+            />
           </div>
 
           {/* Client Allocation */}
