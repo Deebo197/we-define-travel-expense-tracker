@@ -12,7 +12,7 @@ import ClientSplitInput from "@/components/ClientSplitInput";
 import { PAID_BY_CODES, getCategoriesForClient, isReimbursementRequired } from "@/lib/constants";
 import { toast } from "sonner";
 
-export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
+function DuplicateToWD1DialogInner({ expense, open, onClose }) {
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState(() => ({
@@ -23,6 +23,14 @@ export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
     category: expense?.category || "",
     paid_by: "WD1",
     client_allocations: expense?.client_allocations || [],
+    vat: expense?.vat || false,
+    currency: expense?.currency || "GBP",
+    original_amount: expense?.original_amount || null,
+    exchange_rate: expense?.exchange_rate || null,
+    submitted_by: expense?.submitted_by || "",
+    submitted_by_name: expense?.submitted_by_name || "",
+    month: expense?.month || "",
+    year: expense?.year || null,
   }));
 
   const primaryClient = form.client_allocations?.[0]?.client_code;
@@ -51,7 +59,7 @@ export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
   if (!expense) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Duplicate to WD1</DialogTitle>
@@ -85,6 +93,25 @@ export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
               <Label className="text-sm">Actual Cost £</Label>
               <Input type="number" step="0.01" value={form.actual_cost} onChange={e => setForm(f => ({ ...f, actual_cost: parseFloat(e.target.value) || 0 }))} className="mt-1" />
             </div>
+          </div>
+
+          {expense.currency && expense.currency !== "GBP" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Original Amount ({expense.currency})</Label>
+                <Input type="number" step="0.01" value={form.original_amount || ""} onChange={e => setForm(f => ({ ...f, original_amount: parseFloat(e.target.value) || null }))} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm">Exchange Rate</Label>
+                <Input type="number" step="0.0001" value={form.exchange_rate || ""} onChange={e => setForm(f => ({ ...f, exchange_rate: parseFloat(e.target.value) || null }))} className="mt-1" />
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-muted-foreground">VAT Applicable:</span>
+            <span className={form.vat ? "text-green-500 font-medium" : "text-muted-foreground"}>{form.vat ? "Yes" : "No"}</span>
+            <button type="button" onClick={() => setForm(f => ({ ...f, vat: !f.vat }))} className="text-xs underline text-primary ml-1">toggle</button>
           </div>
 
           <div>
@@ -149,4 +176,9 @@ export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
       </DialogContent>
     </Dialog>
   );
+}
+
+export default function DuplicateToWD1Dialog({ expense, open, onClose }) {
+  if (!expense) return null;
+  return <DuplicateToWD1DialogInner key={expense.id} expense={expense} open={open} onClose={onClose} />;
 }
