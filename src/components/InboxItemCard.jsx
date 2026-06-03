@@ -14,7 +14,7 @@ export default function InboxItemCard({ item, onClick, selectable, selected, onT
   const Icon = cfg.icon;
   const isPdf = item.mime_type === "application/pdf" || item.original_filename?.toLowerCase().endsWith(".pdf");
   const fileCount = item.receipt_files?.length || 1;
-  const isClickable = item.status === "needs_review" || item.status === "failed";
+  const isClickable = item.status === "needs_review" || item.status === "failed" || item.status === "processing" || item.status === "inbox";
 
   const handleClick = () => {
     if (selectable) {

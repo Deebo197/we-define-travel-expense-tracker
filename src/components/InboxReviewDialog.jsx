@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, ExternalLink, FileText, CheckCircle2 } from "lucide-react";
+import { Loader2, ExternalLink, FileText, CheckCircle2, Clock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { PAID_BY_CODES, getCategoriesForClient, formatCurrency } from "@/lib/constants";
@@ -131,6 +131,14 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
             <span className="text-muted-foreground font-normal text-sm">— Review Receipt</span>
           </DialogTitle>
         </DialogHeader>
+
+        {(item.status === "processing" || item.status === "inbox") && (
+          <div className="flex items-center gap-2 text-sm rounded-[10px] px-3 py-2.5 mb-1"
+            style={{ backgroundColor: "rgba(127,91,255,0.1)", color: "#7F5BFF", border: "1px solid rgba(127,91,255,0.2)" }}>
+            <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+            Still processing — OCR is reading the receipt. Details will fill in automatically.
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-5">
           {/* Left: receipt preview */}
