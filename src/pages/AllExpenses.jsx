@@ -74,8 +74,9 @@ export default function AllExpenses() {
         Promise.all(ids.map(async id => {
           const exp = expenses.find(e => e.id === id);
           if (!exp) return;
-          const { id: _id, created_date, updated_date, created_by_id, drive_sync_failed, ...rest } = exp;
-          await base44.entities.Expense.create({ ...rest, paid_by: "WD1", is_admin_only_duplicate: true, drive_sync_failed: false });
+          const { id: _id, created_date, updated_date, created_by_id, drive_sync_failed, receipt_code, ...rest } = exp;
+          const codeRes = await base44.functions.invoke("generateReceiptCode", { date: exp.date });
+          await base44.entities.Expense.create({ ...rest, paid_by: "WD1", is_admin_only_duplicate: true, drive_sync_failed: false, receipt_code: codeRes.data?.receipt_code || "" });
         })).then(() => {
           queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
           setSelectedIds([]);

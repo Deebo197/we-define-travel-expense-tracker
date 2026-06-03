@@ -58,7 +58,8 @@ function DuplicateToWD1DialogInner({ expense, open, onClose }) {
 
   const createDuplicate = useMutation({
     mutationFn: async (data) => {
-      const { id: _id, created_date, updated_date, created_by_id, drive_sync_failed, ...rest } = expense;
+      const { id: _id, created_date, updated_date, created_by_id, drive_sync_failed, receipt_code, ...rest } = expense;
+      const codeRes = await base44.functions.invoke("generateReceiptCode", { date: data.date || expense.date });
       await base44.entities.Expense.create({
         ...rest,
         ...data,
@@ -66,6 +67,7 @@ function DuplicateToWD1DialogInner({ expense, open, onClose }) {
         is_admin_only_duplicate: true,
         drive_sync_failed: false,
         reimbursement_required: isReimbursementRequired("WD1"),
+        receipt_code: codeRes.data?.receipt_code || "",
       });
     },
     onSuccess: () => {
