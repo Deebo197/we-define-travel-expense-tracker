@@ -2,17 +2,16 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, ExternalLink, CheckCircle2, Trash2, Pencil, AlertTriangle, Copy } from "lucide-react";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import CategoryBadge from "../components/CategoryBadge";
-import CategorySelectItem from "../components/CategorySelectItem";
 import PersonAvatar from "../components/PersonAvatar";
-import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName, getPaidByLabel, getCategoriesForClient } from "@/lib/constants";
+import EditExpenseDialog from "../components/EditExpenseDialog";
+import DuplicateToWD1Dialog from "../components/DuplicateToWD1Dialog";
+import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName } from "@/lib/constants";
 import { toast } from "sonner";
 
 export default function AllExpenses() {
@@ -32,8 +31,8 @@ export default function AllExpenses() {
   const [selected, setSelected] = useState(null);
   const [checked, setChecked] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [editExpense, setEditExpense] = useState(null); // expense being edited
-  const [editForm, setEditForm] = useState({});
+  const [editExpense, setEditExpense] = useState(null);
+  const [duplicateExpense, setDuplicateExpense] = useState(null);
 
   const markPaid = useMutation({
     mutationFn: async (ids) => {
@@ -61,58 +60,29 @@ export default function AllExpenses() {
     onError: (err) => toast.error(err.message || "Failed to delete expenses"),
   });
 
-  const duplicateToWD1 = useMutation({
-    mutationFn: async (ids) => {
-      for (const id of ids) {
-        const exp = expenses.find(e => e.id === id);
-        if (!exp) continue;
-        const { id: _id, created_date, updated_date, created_by_id, ...rest } = exp;
-        await base44.entities.Expense.create({
-          ...rest,
-          paid_by: "WD1",
-          is_admin_only_duplicate: true,
-          receipt_code: undefined,
-          receipt_file: undefined,
-          receipt_url: undefined,
-          primary_receipt_file_url: undefined,
-          receipt_files: [],
-          drive_sync_failed: false,
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
-      setSelectedIds([]);
-      toast.success(`Duplicated ${selectedIds.length} expense(s) to WD1`);
-    },
-    onError: (err) => toast.error(err.message || "Failed to duplicate expenses"),
-  });
-
-  const saveEdit = useMutation({
-    mutationFn: async ({ id, data }) => {
-      await base44.entities.Expense.update(id, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
-      setEditExpense(null);
-    },
-    onError: (err) => toast.error(err.message || "Failed to save changes"),
-  });
-
   const toggleSelectId = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const openEdit = (exp) => {
-    setEditExpense(exp);
-    setEditForm({
-      date: exp.date,
-      description: exp.description,
-      paid_amount: exp.paid_amount,
-      actual_cost: exp.actual_cost,
-      category: exp.category || "",
-      paid_by: exp.paid_by,
-    });
+  const openDuplicate = (ids) => {
+    // For single selection open dialog; for multiple still confirm-and-batch
+    if (ids.length === 1) {
+      setDuplicateExpense(expenses.find(e => e.id === ids[0]));
+    } else {
+      // multi: open dialog for first, user can review each one — or just batch directly
+      if (confirm(`Duplicate ${ids.length} expense(s) to WD1 (admin only, no review)?`)) {
+        Promise.all(ids.map(async id => {
+          const exp = expenses.find(e => e.id === id);
+          if (!exp) return;
+          const { id: _id, created_date, updated_date, created_by_id, receipt_code, receipt_file, receipt_url, primary_receipt_file_url, drive_sync_failed, ...rest } = exp;
+          await base44.entities.Expense.create({ ...rest, paid_by: "WD1", is_admin_only_duplicate: true, receipt_code: undefined, receipt_file: undefined, receipt_url: undefined, primary_receipt_file_url: undefined, receipt_files: [], drive_sync_failed: false });
+        })).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
+          setSelectedIds([]);
+          toast.success(`Duplicated ${ids.length} expenses to WD1`);
+        }).catch(err => toast.error(err.message || "Failed to duplicate"));
+      }
+    }
   };
 
   const months = [...new Set(expenses.map(e => e.month))].filter(Boolean);
@@ -142,12 +112,12 @@ export default function AllExpenses() {
         {selectedIds.length > 0 && (
           <>
             {selectedIds.length === 1 && (
-              <Button size="sm" variant="outline" onClick={() => openEdit(expenses.find(e => e.id === selectedIds[0]))}>
+              <Button size="sm" variant="outline" onClick={() => setEditExpense(expenses.find(e => e.id === selectedIds[0]))}>
                 <Pencil className="h-4 w-4 mr-1" /> Edit
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => { if (confirm(`Duplicate ${selectedIds.length} expense(s) to WD1 (admin only)?`)) duplicateToWD1.mutate(selectedIds); }} disabled={duplicateToWD1.isPending}>
-              {duplicateToWD1.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+            <Button size="sm" variant="outline" onClick={() => openDuplicate(selectedIds)}>
+              <Copy className="h-4 w-4 mr-1" />
               Duplicate to WD1
             </Button>
             <Button size="sm" variant="destructive" onClick={() => { if (confirm(`Delete ${selectedIds.length} expense(s)?`)) deleteExpenses.mutate(selectedIds); }} disabled={deleteExpenses.isPending}>
@@ -342,62 +312,18 @@ export default function AllExpenses() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit dialog */}
-      <Dialog open={!!editExpense} onOpenChange={() => setEditExpense(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Expense</DialogTitle>
-          </DialogHeader>
-          {editExpense && (
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm">Date</Label>
-                <Input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-sm">Description</Label>
-                <Input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className="mt-1" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-sm">Paid Amount £</Label>
-                  <Input type="number" step="0.01" value={editForm.paid_amount} onChange={e => setEditForm(f => ({ ...f, paid_amount: parseFloat(e.target.value) }))} className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-sm">Actual Cost £</Label>
-                  <Input type="number" step="0.01" value={editForm.actual_cost} onChange={e => setEditForm(f => ({ ...f, actual_cost: parseFloat(e.target.value) }))} className="mt-1" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm">Paid By</Label>
-                <Select value={editForm.paid_by} onValueChange={v => setEditForm(f => ({ ...f, paid_by: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code} — {p.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-               <Label className="text-sm">Category</Label>
-               <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
-                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
-                 <SelectContent>
-                   {getCategoriesForClient(editExpense.client_allocations?.[0]?.client_code).map(c => (
-                     <CategorySelectItem key={c} category={c} />
-                   ))}
-                 </SelectContent>
-               </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setEditExpense(null)}>Cancel</Button>
-            <Button onClick={() => saveEdit.mutate({ id: editExpense.id, data: editForm })} disabled={saveEdit.isPending}>
-              {saveEdit.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditExpenseDialog
+        expense={editExpense}
+        open={!!editExpense}
+        onClose={() => { setEditExpense(null); setSelectedIds([]); }}
+        queryKeys={[["allExpenses"]]}
+      />
+
+      <DuplicateToWD1Dialog
+        expense={duplicateExpense}
+        open={!!duplicateExpense}
+        onClose={() => { setDuplicateExpense(null); setSelectedIds([]); }}
+      />
     </div>
   );
 }
