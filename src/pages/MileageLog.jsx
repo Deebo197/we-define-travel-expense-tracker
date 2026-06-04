@@ -236,11 +236,15 @@ export default function MileageLog() {
     setEditJourney(j);
     setEditForm({
       date: j.date,
+      vehicle_type: j.vehicle_type || "Car",
       purpose: j.purpose,
+      paid_by: j.staff_member || "",
+      stops: j.stops?.length >= 2 ? j.stops : [{ label: "A", postcode: "" }, { label: "B", postcode: "" }],
+      return_journey: j.return_journey || false,
       total_miles: j.total_miles,
       total_cost: j.total_cost,
       category: j.category || "",
-      return_journey: j.return_journey || false,
+      client_allocations: j.client_allocations || [{ client_code: "", client_name: "", percentage: 100, amount: 0 }],
     });
   };
 
@@ -372,7 +376,7 @@ export default function MileageLog() {
 
       {/* Edit journey dialog */}
       <Dialog open={!!editJourney} onOpenChange={() => setEditJourney(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Mileage Journey</DialogTitle>
           </DialogHeader>
@@ -384,39 +388,125 @@ export default function MileageLog() {
                   <Input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Total Miles</Label>
-                  <Input type="number" step="0.1" value={editForm.total_miles} onChange={e => setEditForm(f => ({ ...f, total_miles: parseFloat(e.target.value) || 0 }))} className="mt-1" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Total Cost £</Label>
-                <Input type="number" step="0.01" value={editForm.total_cost} onChange={e => setEditForm(f => ({ ...f, total_cost: parseFloat(e.target.value) || 0 }))} className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Purpose</Label>
-                <Input value={editForm.purpose} onChange={e => setEditForm(f => ({ ...f, purpose: e.target.value }))} className="mt-1" />
-              </div>
-              {editJourney.category && (
-                <div>
-                  <Label className="text-sm font-medium">Category</Label>
-                  <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
+                  <Label className="text-sm font-medium">Vehicle</Label>
+                  <Select value={editForm.vehicle_type} onValueChange={v => setEditForm(f => ({ ...f, vehicle_type: v }))}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {getCategoriesForClient(editJourney.client_allocations?.[0]?.client_code).map(c => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
+                      {VEHICLE_TYPES.map(v => <SelectItem key={v.type} value={v.type}>{v.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Purpose</Label>
+                <Textarea value={editForm.purpose} onChange={e => setEditForm(f => ({ ...f, purpose: e.target.value }))} className="mt-1" rows={2} />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Paid By</Label>
+                <Select value={editForm.paid_by} onValueChange={v => setEditForm(f => ({ ...f, paid_by: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select who paid" /></SelectTrigger>
+                  <SelectContent>
+                    {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code} — {p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Stops */}
+              <div>
+                <Label className="text-sm font-semibold">Route — Stops</Label>
+                <div className="space-y-2 mt-2">
+                  {editForm.stops?.map((stop, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-primary">{stop.label}</span>
+                      </div>
+                      <Input
+                        value={stop.postcode}
+                        onChange={e => setEditForm(f => ({ ...f, stops: f.stops.map((s, si) => si === i ? { ...s, postcode: e.target.value } : s) }))}
+                        placeholder="Postcode"
+                        className="flex-1"
+                      />
+                      {editForm.stops.length > 2 && (
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8"
+                          onClick={() => {
+                            const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                            setEditForm(f => ({ ...f, stops: f.stops.filter((_, si) => si !== i).map((s, si) => ({ ...s, label: labels[si] || `${si + 1}` })) }));
+                          }}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Button type="button" variant="outline" size="sm" className="mt-2"
+                  onClick={() => {
+                    const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                    setEditForm(f => ({ ...f, stops: [...f.stops, { label: labels[f.stops.length] || `${f.stops.length + 1}`, postcode: "" }] }));
+                  }}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Stop
+                </Button>
+              </div>
+
               <div className="flex items-center gap-3">
                 <Switch checked={editForm.return_journey} onCheckedChange={v => setEditForm(f => ({ ...f, return_journey: v }))} />
                 <Label className="text-sm">Return journey</Label>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm font-medium">Total Miles</Label>
+                  <Input type="number" step="0.1" value={editForm.total_miles} onChange={e => setEditForm(f => ({ ...f, total_miles: parseFloat(e.target.value) || 0 }))} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Total Cost £</Label>
+                  <Input type="number" step="0.01" value={editForm.total_cost} onChange={e => setEditForm(f => ({ ...f, total_cost: parseFloat(e.target.value) || 0 }))} className="mt-1" />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Category</Label>
+                <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {getCategoriesForClient(editForm.client_allocations?.[0]?.client_code).map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <Label className="text-sm font-semibold mb-3 block">Client Allocation</Label>
+                <ClientSplitInput
+                  allocations={editForm.client_allocations}
+                  onChange={a => {
+                    const newPrimary = a[0]?.client_code;
+                    const oldPrimary = editForm.client_allocations[0]?.client_code;
+                    setEditForm(f => ({ ...f, client_allocations: a, category: newPrimary !== oldPrimary ? "" : f.category }));
+                  }}
+                  paidAmount={parseFloat(editForm.total_cost) || 0}
+                />
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setEditJourney(null)}>Cancel</Button>
                 <Button className="flex-1" disabled={saveEdit.isPending}
-                  onClick={() => saveEdit.mutate({ id: editJourney.id, data: editForm })}>
+                  onClick={() => {
+                    const paidByEntry = PAID_BY_CODES.find(p => p.code === editForm.paid_by);
+                    saveEdit.mutate({
+                      id: editJourney.id,
+                      data: {
+                        ...editForm,
+                        staff_member: editForm.paid_by,
+                        staff_member_name: paidByEntry?.label || editForm.paid_by,
+                        reimbursement_required: isReimbursementRequired(editForm.paid_by),
+                        month: formatMonth(editForm.date),
+                        year: new Date(editForm.date).getFullYear(),
+                      }
+                    });
+                  }}>
                   {saveEdit.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Save Changes
                 </Button>
               </div>
