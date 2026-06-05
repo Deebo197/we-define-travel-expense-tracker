@@ -79,7 +79,7 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-full max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Expense</DialogTitle>
         </DialogHeader>
