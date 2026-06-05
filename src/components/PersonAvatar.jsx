@@ -46,7 +46,7 @@ export default function PersonAvatar({ code, size = "md", showName = false }) {
         style={{ backgroundColor: "var(--bg-surface-2)", color: "var(--text-secondary)" }}
         title={displayName}
       >
-        {code.slice(0, 2)}
+        {code}
       </div>
       {showName && <span className={`font-medium ${textSizeClasses[size]}`}>{displayName}</span>}
     </div>
