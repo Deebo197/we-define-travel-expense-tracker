@@ -36,7 +36,7 @@ export default function Layout() {
           
         </div>
 
-        <main className="p-4 md:p-6 lg:p-8 max-w-7xl pb-28 lg:pb-8">
+        <main className="p-4 md:p-6 lg:p-8 pb-28 lg:pb-8">
           <Outlet />
         </main>
       </div>
