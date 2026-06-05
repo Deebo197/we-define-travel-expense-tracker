@@ -56,6 +56,7 @@ export default function AllExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
       setSelectedIds([]);
+      setChecked([]);
     },
     onError: (err) => toast.error(err.message || "Failed to delete expenses"),
   });
@@ -243,7 +244,7 @@ export default function AllExpenses() {
                 <td className="p-3">
                   <div className="flex items-center gap-1.5">
                     {(() => {
-                      const receiptUrl = exp.receipt_file || exp.primary_receipt_file_url || exp.receipt_url || exp.receipt_files?.[0]?.public_receipt_url || exp.receipt_files?.[0]?.file_url;
+                      const receiptUrl = exp.receipt_files?.[0]?.public_receipt_url || exp.primary_receipt_file_url || exp.receipt_url || exp.receipt_files?.[0]?.file_url || exp.receipt_file;
                       return receiptUrl ? (
                         <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-mono text-xs hover:underline flex items-center gap-1">
                           {exp.receipt_code} <ExternalLink className="h-3 w-3" />

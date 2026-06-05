@@ -172,7 +172,7 @@ export default function MyExpenses() {
     confirmed.filter(e => !e.reimbursement_required).reduce((s, e) => s + (e.paid_amount || 0), 0),
     [confirmed]);
   const missingReceiptCount = useMemo(() =>
-    confirmed.filter(e => !e._isMileage && !e.receipt_file && !e.receipt_url).length,
+    confirmed.filter(e => !e._isMileage && !e.receipt_file && !e.receipt_url && !e.primary_receipt_file_url && !e.receipt_files?.[0]?.file_url).length,
     [confirmed]);
   const totalSpend = useMemo(() => confirmed.reduce((s, e) => s + (e.paid_amount || 0), 0), [confirmed]);
 

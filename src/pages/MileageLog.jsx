@@ -608,7 +608,17 @@ export default function MileageLog() {
               </div>
               <div>
                 <Label className="text-sm font-medium">Total Cost £</Label>
-                <Input type="number" step="0.01" value={form.total_cost} onChange={e => setForm(f => ({ ...f, total_cost: e.target.value }))} className="mt-1" />
+                <Input type="number" step="0.01" value={form.total_cost} onChange={e => {
+                  const cost = parseFloat(e.target.value) || 0;
+                  setForm(f => ({
+                    ...f,
+                    total_cost: e.target.value,
+                    client_allocations: f.client_allocations.map(a => ({
+                      ...a,
+                      amount: Math.round((cost * (a.percentage || 0) / 100) * 100) / 100,
+                    })),
+                  }));
+                }} className="mt-1" />
               </div>
             </div>
 

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, FileDown, Eye } from "lucide-react";
-import { CLIENT_CODES, getClientName, formatCurrency, formatForeignCurrency, formatDateUK, COMPANY_INFO } from "@/lib/constants";
+import { CLIENT_CODES, getClientName, formatCurrency, formatForeignCurrency, formatDateUK, formatMonth, COMPANY_INFO } from "@/lib/constants";
 import { downloadSoMaldivesExcel } from "@/lib/soMaldivesExcel";
 
 export default function ClientReport() {
@@ -67,7 +67,7 @@ export default function ClientReport() {
   const grouped = useMemo(() => {
     const map = {};
     reportData.forEach(item => {
-      const key = item.month || "Unknown";
+      const key = item.month || (item.date ? formatMonth(item.date) : "Unknown");
       if (!map[key]) map[key] = [];
       map[key].push(item);
     });
@@ -84,6 +84,7 @@ export default function ClientReport() {
 
   const handleDownload = async () => {
     setGenerating(true);
+    try {
     const { default: jsPDF } = await import("jspdf");
 
     const pdf = new jsPDF("p", "mm", "a4");
@@ -225,7 +226,11 @@ export default function ClientReport() {
     pdf.text(`${COMPANY_INFO.name} | Registered in England & Wales No. ${COMPANY_INFO.regNumber} | VAT No. ${COMPANY_INFO.vatNumber}`, pageW / 2, y, { align: "center" });
 
     pdf.save(`WDT-Expense-Report-${clientCode}-${dateFrom}-to-${dateTo}.pdf`);
-    setGenerating(false);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleDownloadSoMaldivesExcel = async () => {

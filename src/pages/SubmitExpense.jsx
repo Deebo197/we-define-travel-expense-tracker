@@ -223,7 +223,7 @@ export default function SubmitExpense() {
         >
           <p className="text-sm mb-2" style={{ color: "var(--text-secondary)" }}>Receipt Code</p>
           <p className="text-3xl font-bold tabular-nums mb-8" style={{ color: "#7F5BFF", letterSpacing: "-0.02em" }}>{success}</p>
-          <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", receipt_files: [], client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
+          <Button onClick={() => { setSuccess(null); setForm({ date: new Date().toISOString().split("T")[0], description: "", paid_amount: "", actual_cost: "", vat: false, paid_by: userPaidByCode, category: "", receipt_file: "", receipt_url: "", receipt_files: [], currency: "GBP", original_amount: "", exchange_rate: null, client_allocations: [{ client_code: "", client_name: "", percentage: 100, amount: 0 }] }); }}>
             Submit Another
           </Button>
         </motion.div>

@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
       primary_receipt_file_url: primaryFileUrl,
       receipt_files: receiptFilesForExpense,
       receipt_code: item.receipt_code,
-      reimbursement_required: ['CB','ST','DJ'].includes(paidBy),
+      reimbursement_required: ['CB', 'ST', 'DJ'].includes(paidBy),
       reimbursement_paid: false,
       month,
       year,
