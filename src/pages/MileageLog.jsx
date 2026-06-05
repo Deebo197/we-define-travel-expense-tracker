@@ -14,7 +14,8 @@ import ClientSplitInput from "../components/ClientSplitInput";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import CategoryBadge from "../components/CategoryBadge";
-import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient } from "@/lib/constants";
+import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient, WDT_CATEGORIES } from "@/lib/constants";
+import CategorySelectItem from "../components/CategorySelectItem";
 import { toast } from "sonner";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
@@ -65,6 +66,7 @@ export default function MileageLog() {
   }
 
   const primaryMileageClient = form.client_allocations[0]?.client_code;
+  // Show categories as soon as a client is selected (WD/WD1 → WDT categories, others → Client Expense categories)
   const mileageCategories = primaryMileageClient ? getCategoriesForClient(primaryMileageClient) : [];
 
   const addStop = () => {
@@ -477,14 +479,18 @@ export default function MileageLog() {
 
               <div>
                 <Label className="text-sm font-medium">Category</Label>
-                <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {getCategoriesForClient(editForm.client_allocations?.[0]?.client_code).map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!editForm.client_allocations?.[0]?.client_code ? (
+                  <p className="text-xs text-muted-foreground mt-1.5">Select a client allocation first to see relevant categories</p>
+                ) : (
+                  <Select value={editForm.category} onValueChange={v => setEditForm(f => ({ ...f, category: v }))}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectContent>
+                      {getCategoriesForClient(editForm.client_allocations?.[0]?.client_code).map(c => (
+                        <CategorySelectItem key={c} value={c} />
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="border-t border-border pt-4">
@@ -632,20 +638,22 @@ export default function MileageLog() {
               </div>
             </div>
 
-            {/* Category */}
-            {primaryMileageClient && (
-              <div>
-                <Label className="text-sm font-medium">Category *</Label>
+            {/* Category — shown once a client allocation is selected */}
+            <div>
+              <Label className="text-sm font-medium">Category *</Label>
+              {!primaryMileageClient ? (
+                <p className="text-xs text-muted-foreground mt-1.5">Select a client allocation first to see relevant categories</p>
+              ) : (
                 <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>
                     {mileageCategories.map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <CategorySelectItem key={c} value={c} />
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Client split */}
             <div className="border-t border-border pt-4">
