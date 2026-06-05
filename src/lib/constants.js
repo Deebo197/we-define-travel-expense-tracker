@@ -20,10 +20,26 @@ export const PAID_BY_CODES = [
 ];
 
 export const VEHICLE_TYPES = [
-  { type: "Car", rate: 0.45, rateOver10k: 0.25, label: "Car — 45p/mile" },
-  { type: "Motorcycle", rate: 0.24, rateOver10k: 0.24, label: "Motorcycle — 24p/mile" },
-  { type: "Bicycle", rate: 0.20, rateOver10k: 0.20, label: "Bicycle — 20p/mile" },
+  { type: "Car", rate: 0.45, rateFrom20260601: 0.55, rateOver10k: 0.25, label: "Car" },
+  { type: "Motorcycle", rate: 0.24, rateFrom20260601: 0.24, rateOver10k: 0.24, label: "Motorcycle" },
+  { type: "Bicycle", rate: 0.20, rateFrom20260601: 0.20, rateOver10k: 0.20, label: "Bicycle" },
 ];
+
+// Returns the correct mileage rate for a vehicle type on a given date
+export function getMileageRate(vehicleType, dateStr) {
+  const v = VEHICLE_TYPES.find(v => v.type === vehicleType);
+  if (!v) return 0.45;
+  const date = dateStr ? new Date(dateStr) : new Date();
+  const cutoff = new Date("2026-06-01");
+  const rate = date >= cutoff ? v.rateFrom20260601 : v.rate;
+  return rate;
+}
+
+// Returns a display label for the vehicle type showing the applicable rate
+export function getVehicleLabel(vehicleType, dateStr) {
+  const rate = getMileageRate(vehicleType, dateStr);
+  return `${vehicleType} — ${Math.round(rate * 100)}p/mile`;
+}
 
 export const REIMBURSEMENT_CODES = ["CB", "ST", "DJ"];
 

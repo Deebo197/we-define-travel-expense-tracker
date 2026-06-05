@@ -14,7 +14,7 @@ import ClientSplitInput from "../components/ClientSplitInput";
 import ReimbursementBadge from "../components/ReimbursementBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import CategoryBadge from "../components/CategoryBadge";
-import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient, WDT_CATEGORIES } from "@/lib/constants";
+import { VEHICLE_TYPES, PAID_BY_CODES, formatCurrency, formatDateUK, formatMonth, isReimbursementRequired, getCategoriesForClient, WDT_CATEGORIES, getMileageRate, getVehicleLabel } from "@/lib/constants";
 import CategorySelectItem from "../components/CategorySelectItem";
 import { toast } from "sonner";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
@@ -93,11 +93,6 @@ export default function MileageLog() {
     }));
   };
 
-  const getRate = () => {
-    const v = VEHICLE_TYPES.find(v => v.type === form.vehicle_type);
-    return v?.rate || 0.45;
-  };
-
   const calculateDistance = async () => {
     setCalculating(true);
     const postcodes = form.stops.map(s => s.postcode).filter(Boolean);
@@ -132,7 +127,7 @@ export default function MileageLog() {
     let miles = Math.round((distanceMetres / 1609.34) * 10) / 10;
 
     if (form.return_journey) miles = Math.round(miles * 2 * 10) / 10;
-    const rate = getRate();
+    const rate = getMileageRate(form.vehicle_type, form.date);
     const cost = Math.round(miles * rate * 100) / 100;
 
     setForm(f => ({
@@ -166,7 +161,7 @@ export default function MileageLog() {
       const journey = await base44.entities.MileageJourney.create({
         date: form.date,
         vehicle_type: form.vehicle_type,
-        rate_per_mile: getRate(),
+        rate_per_mile: getMileageRate(form.vehicle_type, form.date),
         purpose: form.purpose,
         staff_member: form.paid_by,
         staff_member_name: paidByEntry?.label || form.paid_by,
@@ -549,7 +544,7 @@ export default function MileageLog() {
                 <Select value={form.vehicle_type} onValueChange={v => setForm(f => ({ ...f, vehicle_type: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {VEHICLE_TYPES.map(v => <SelectItem key={v.type} value={v.type}>{v.label}</SelectItem>)}
+                    {VEHICLE_TYPES.map(v => <SelectItem key={v.type} value={v.type}>{getVehicleLabel(v.type, form.date)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -618,7 +613,7 @@ export default function MileageLog() {
                 <Label className="text-sm font-medium">Total Miles</Label>
                 <Input type="number" value={form.total_miles} onChange={e => {
                   const miles = parseFloat(e.target.value) || 0;
-                  const cost = Math.round(miles * getRate() * 100) / 100;
+                  const cost = Math.round(miles * getMileageRate(form.vehicle_type, form.date) * 100) / 100;
                   setForm(f => ({ ...f, total_miles: e.target.value, total_cost: cost }));
                 }} className="mt-1" />
               </div>
