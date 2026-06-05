@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +13,7 @@ import PersonAvatar from "../components/PersonAvatar";
 import EditExpenseDialog from "../components/EditExpenseDialog";
 import DuplicateToWD1Dialog from "../components/DuplicateToWD1Dialog";
 import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName } from "@/lib/constants";
+import AnimatedPage from "@/components/AnimatedPage";
 import { toast } from "sonner";
 
 export default function AllExpenses() {
@@ -107,6 +109,7 @@ export default function AllExpenses() {
   }
 
   return (
+    <AnimatedPage>
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">All Expenses</h1>
@@ -209,8 +212,15 @@ export default function AllExpenses() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(exp => (
-            <tr key={exp.id} className={`border-t border-border hover:bg-muted/20 transition-colors ${selectedIds.includes(exp.id) ? "bg-primary/5" : ""}`}>
+            {filtered.map((exp, idx) => (
+            <motion.tr
+              key={exp.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.22, delay: idx * 0.03, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ backgroundColor: "var(--bg-surface-2)", x: 2 }}
+              whileTap={{ scale: 0.995 }}
+              className={`border-t border-border transition-colors cursor-pointer ${selectedIds.includes(exp.id) ? "bg-primary/5" : ""}`}>
               <td className="p-3 text-center">
                 <Checkbox checked={selectedIds.includes(exp.id)} onCheckedChange={() => toggleSelectId(exp.id)} />
               </td>
@@ -260,7 +270,7 @@ export default function AllExpenses() {
                     )}
                   </div>
                 </td>
-              </tr>
+              </motion.tr>
             ))}
           </tbody>
         </table>
@@ -335,5 +345,6 @@ export default function AllExpenses() {
         onClose={() => { setDuplicateExpense(null); setSelectedIds([]); }}
       />
     </div>
+    </AnimatedPage>
   );
 }
