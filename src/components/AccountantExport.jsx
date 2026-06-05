@@ -4,13 +4,14 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, FileSpreadsheet, FileText } from "lucide-react";
+import { Loader2, FileSpreadsheet, FileText, Eye } from "lucide-react";
 import { formatCurrency, formatDateUK, getClientName, getPaidByLabel, CLIENT_CODES, COMPANY_INFO } from "@/lib/constants";
 import MonthEndReadiness from "./MonthEndReadiness";
 
 export default function AccountantExport() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
   const [generatingCSV, setGeneratingCSV] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
@@ -212,26 +213,78 @@ export default function AccountantExport() {
       <div className="flex flex-wrap items-end gap-3 mb-4">
         <div>
           <Label className="text-sm">From</Label>
-          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="mt-1 w-40" />
+          <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setShowPreview(false); }} className="mt-1 w-40" />
         </div>
         <div>
           <Label className="text-sm">To</Label>
-          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="mt-1 w-40" />
+          <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setShowPreview(false); }} className="mt-1 w-40" />
         </div>
         <span className="text-sm text-muted-foreground">{filtered.length} expenses</span>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Button variant="outline" onClick={handleCSVExport} disabled={generatingCSV} className="gap-1.5">
-          {generatingCSV ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-          Full CSV Export
-        </Button>
-        <Button variant="outline" onClick={handlePDFExport} disabled={generatingPDF} className="gap-1.5">
-          {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-          Full Accountant PDF
+        <Button onClick={() => setShowPreview(true)} disabled={filtered.length === 0} className="gap-1.5">
+          <Eye className="h-4 w-4" /> Preview
         </Button>
       </div>
     </div>
+
+    {/* Preview */}
+    {showPreview && (
+      <div className="bg-card rounded-xl border border-border p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Preview — {filtered.length} expenses</h3>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleCSVExport} disabled={generatingCSV} className="gap-1.5">
+              {generatingCSV ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+              Download CSV
+            </Button>
+            <Button variant="outline" onClick={handlePDFExport} disabled={generatingPDF} className="gap-1.5">
+              {generatingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Download PDF
+            </Button>
+          </div>
+        </div>
+
+        {/* Summary by client */}
+        <div className="space-y-4">
+          {Object.entries(groupedByClient).map(([clientCode, months]) => {
+            const clientTotal = Object.values(months).flat().reduce((s, e) => s + (e.clientAmount || 0), 0);
+            const allItems = Object.values(months).flat();
+            return (
+              <div key={clientCode} className="rounded-xl overflow-hidden border border-border">
+                {/* Client header */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60">
+                  <span className="font-semibold text-sm">{clientCode} — {getClientName(clientCode)}</span>
+                  <span className="font-bold text-sm tabular-nums">{formatCurrency(clientTotal)}</span>
+                </div>
+                {/* Month sections */}
+                {Object.entries(months).map(([month, items]) => (
+                  <div key={month}>
+                    <div className="flex items-center justify-between px-4 py-1.5 bg-muted/20 border-t border-border">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{month}</span>
+                      <span className="text-xs text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""} · {formatCurrency(items.reduce((s, e) => s + (e.clientAmount || 0), 0))}</span>
+                    </div>
+                    {items.map((item, i) => (
+                      <div key={item.id} className={`flex items-center gap-3 px-4 py-2 text-sm border-t border-border/50 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                        <span className="text-xs text-muted-foreground w-20 flex-shrink-0">{formatDateUK(item.date)}</span>
+                        <span className="flex-1 truncate text-xs">{item.description}</span>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">{item.paid_by}</span>
+                        <span className="text-xs font-mono text-muted-foreground flex-shrink-0">{item.receipt_code}</span>
+                        <span className="text-xs font-semibold tabular-nums flex-shrink-0">{formatCurrency(item.clientAmount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Grand total */}
+        <div className="flex items-center justify-between mt-4 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
+          <span className="font-bold">Overall Total</span>
+          <span className="text-lg font-bold tabular-nums">{formatCurrency(overallTotal)}</span>
+        </div>
+      </div>
+    )}
     </div>
   );
 }
