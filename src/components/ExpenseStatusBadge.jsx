@@ -7,7 +7,7 @@ import { AlertTriangle, Clock, CheckCircle2, RefreshCw, FileX, Send } from "luci
 export function getExpenseStatus(expense) {
   if (expense.status === "draft") return "draft";
   if (expense.drive_sync_failed) return "sync_failed";
-  if (!expense.receipt_file && !expense.receipt_url) return "missing_receipt";
+  if (!expense._isMileage && !expense.receipt_file && !expense.receipt_url) return "missing_receipt";
   if (expense.reimbursement_required && !expense.reimbursement_paid) return "reimbursement_pending";
   if (expense.reimbursement_required && expense.reimbursement_paid) return "reimbursed";
   return "submitted";
