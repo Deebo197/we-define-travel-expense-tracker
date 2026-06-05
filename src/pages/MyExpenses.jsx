@@ -16,8 +16,15 @@ import CategoryBadge from "../components/CategoryBadge";
 import PersonAvatar from "../components/PersonAvatar";
 import ExpenseSpendChart from "../components/ExpenseSpendChart";
 import ExpenseStatusBadge, { getExpenseStatus } from "../components/ExpenseStatusBadge";
-import { CLIENT_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName } from "@/lib/constants";
+import { CLIENT_CODES, PAID_BY_CODES, formatCurrency, formatForeignCurrency, formatDateUK, getClientName } from "@/lib/constants";
 import { PERSON_AVATARS } from "@/lib/personAvatars";
+
+// All paid_by codes that belong to each staff member (personal + company Amex)
+const STAFF_ALL_CODES = {
+  DJ: ["DJ", "WDA"],
+  CB: ["CB", "WCA"],
+  ST: ["ST", "WSA"],
+};
 
 const STAFF_OPTIONS = [
   { code: "DJ", label: "Dee" },
@@ -68,8 +75,16 @@ export default function MyExpenses() {
   const isAdmin = user?.role === "admin";
   const [viewingCode, setViewingCode] = useState(null);
 
+  // Determine the primary code for display (personal code like DJ, CB, ST)
   const targetCode = isAdmin && viewingCode ? viewingCode : user?.paid_by_code || null;
   const targetPerson = targetCode ? PERSON_AVATARS[targetCode] : null;
+
+  // All codes (personal + Amex) for the person being viewed
+  const allCodesForTarget = useMemo(() => {
+    if (targetCode && STAFF_ALL_CODES[targetCode]) return STAFF_ALL_CODES[targetCode];
+    // Fallback for users without a mapped code: use email-based submitted_by
+    return null;
+  }, [targetCode]);
 
   const { data: myInboxItems = [] } = useQuery({
     queryKey: ["myInboxItems", user?.email],
@@ -83,9 +98,19 @@ export default function MyExpenses() {
   const { data: allExpenses = [], isLoading } = useQuery({
     queryKey: ["myExpenses", user?.email, targetCode],
     queryFn: async () => {
-      if (isAdmin && viewingCode) {
-        return base44.entities.Expense.filter({ paid_by: viewingCode }, "-date", 500);
+      const codes = isAdmin && viewingCode
+        ? STAFF_ALL_CODES[viewingCode] || [viewingCode]
+        : allCodesForTarget;
+
+      if (codes) {
+        // Fetch by all paid_by codes for this person, deduplicate
+        const results = await Promise.all(
+          codes.map(c => base44.entities.Expense.filter({ paid_by: c }, "-date", 500))
+        );
+        const seen = new Set();
+        return results.flat().filter(e => seen.has(e.id) ? false : seen.add(e.id));
       }
+      // Fallback: submitted_by email
       return base44.entities.Expense.filter({ submitted_by: user.email }, "-date", 500);
     },
     enabled: !!user,
@@ -94,17 +119,18 @@ export default function MyExpenses() {
   const { data: myMileage = [] } = useQuery({
     queryKey: ["myMileage", user?.email, targetCode],
     queryFn: async () => {
-      if (isAdmin && viewingCode) {
-        return base44.entities.MileageJourney.filter({ staff_member: viewingCode }, "-date", 500);
+      const codes = isAdmin && viewingCode
+        ? STAFF_ALL_CODES[viewingCode] || [viewingCode]
+        : allCodesForTarget;
+
+      if (codes) {
+        const results = await Promise.all(
+          codes.map(c => base44.entities.MileageJourney.filter({ staff_member: c }, "-date", 500))
+        );
+        const seen = new Set();
+        return results.flat().filter(j => seen.has(j.id) ? false : seen.add(j.id));
       }
-      // Non-admin: fetch by both company and personal codes, merge and deduplicate
-      const codes = [user?.paid_by_code, user?.paid_by_code_personal].filter(Boolean);
-      if (!codes.length) return [];
-      const results = await Promise.all(
-        codes.map(c => base44.entities.MileageJourney.filter({ staff_member: c }, "-date", 500))
-      );
-      const seen = new Set();
-      return results.flat().filter(j => seen.has(j.id) ? false : seen.add(j.id));
+      return [];
     },
     enabled: !!user,
   });
@@ -134,8 +160,16 @@ export default function MyExpenses() {
 
   // Derived stats
   const thisMonthTotal = useMemo(() => getThisMonthTotal(confirmed), [confirmed]);
+  // Reimbursable = paid personally (ST, DJ, CB codes) — money owed back to the person
   const pendingReimbAmt = useMemo(() =>
     confirmed.filter(e => e.reimbursement_required && !e.reimbursement_paid).reduce((s, e) => s + (e.paid_amount || 0), 0),
+    [confirmed]);
+  const reimbursedAmt = useMemo(() =>
+    confirmed.filter(e => e.reimbursement_required && e.reimbursement_paid).reduce((s, e) => s + (e.paid_amount || 0), 0),
+    [confirmed]);
+  // Company Amex spend = not reimbursable (company card)
+  const companyAmexAmt = useMemo(() =>
+    confirmed.filter(e => !e.reimbursement_required).reduce((s, e) => s + (e.paid_amount || 0), 0),
     [confirmed]);
   const missingReceiptCount = useMemo(() =>
     confirmed.filter(e => !e.receipt_file && !e.receipt_url).length,
@@ -237,7 +271,7 @@ export default function MyExpenses() {
             <p className="text-xs font-medium mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>This Month</p>
             <p className="text-lg font-semibold tabular-nums text-white">{formatCurrency(thisMonthTotal)}</p>
           </div>
-          <div className="rounded-[14px] px-4 py-3" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
+          <div className="rounded-[14px] px-4 py-3" style={{ backgroundColor: pendingReimbAmt > 0 ? "rgba(255,92,122,0.25)" : "rgba(255,255,255,0.1)" }}>
             <p className="text-xs font-medium mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>Owed to You</p>
             <p className="text-lg font-semibold tabular-nums text-white">{formatCurrency(pendingReimbAmt)}</p>
           </div>
@@ -327,6 +361,30 @@ export default function MyExpenses() {
           </div>
         </motion.div>
       )}
+
+      {/* Reimbursement breakdown */}
+      <div className="rounded-[20px] p-5 card-elevation" style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}>
+        <h3 className="font-semibold text-[16px] mb-4" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+          Reimbursement Summary
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-[14px] px-4 py-3" style={{ backgroundColor: "rgba(255,92,122,0.07)", border: "1px solid rgba(255,92,122,0.15)" }}>
+            <p className="text-xs font-medium mb-1" style={{ color: "#FF5C7A" }}>Owed to You (Pending)</p>
+            <p className="text-xl font-bold tabular-nums" style={{ color: "#FF5C7A" }}>{formatCurrency(pendingReimbAmt)}</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Paid personally — awaiting reimbursement</p>
+          </div>
+          <div className="rounded-[14px] px-4 py-3" style={{ backgroundColor: "rgba(61,220,151,0.07)", border: "1px solid rgba(61,220,151,0.15)" }}>
+            <p className="text-xs font-medium mb-1" style={{ color: "#3DDC97" }}>Already Reimbursed</p>
+            <p className="text-xl font-bold tabular-nums" style={{ color: "#3DDC97" }}>{formatCurrency(reimbursedAmt)}</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Personal spend paid back to you</p>
+          </div>
+          <div className="rounded-[14px] px-4 py-3" style={{ backgroundColor: "rgba(127,91,255,0.07)", border: "1px solid rgba(127,91,255,0.15)" }}>
+            <p className="text-xs font-medium mb-1" style={{ color: "#7F5BFF" }}>Company Card Spend</p>
+            <p className="text-xl font-bold tabular-nums" style={{ color: "#7F5BFF" }}>{formatCurrency(companyAmexAmt)}</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Paid via company Amex — no reimbursement needed</p>
+          </div>
+        </div>
+      </div>
 
       {/* Spend over time chart */}
       <div className="rounded-[20px] p-5 card-elevation" style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}>
