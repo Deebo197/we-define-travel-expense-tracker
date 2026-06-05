@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
 
     // Skip entirely if primary receipt_url is already in Drive AND every receipt_file also has a drive link
     const hasMultiFile = Array.isArray(receiptFiles) && receiptFiles.length > 0;
-    const primaryAlreadyInDrive = data.receipt_url?.includes('drive.google.com');
+    const primaryAlreadyInDrive = data.receipt_url?.includes('drive.google.com') || data.primary_receipt_file_url?.includes('drive.google.com');
     const allFilesInDrive = hasMultiFile && receiptFiles.every(f => f.drive_file_id && f.public_receipt_url?.includes('drive.google.com'));
 
     if (primaryAlreadyInDrive && (!hasMultiFile || allFilesInDrive)) {

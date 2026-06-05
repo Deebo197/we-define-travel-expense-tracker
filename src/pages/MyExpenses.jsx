@@ -580,7 +580,7 @@ export default function MyExpenses() {
               </div>
 
               {/* Missing receipt warning — not applicable for mileage */}
-              {!selected._isMileage && !selected.receipt_file && !selected.receipt_url && (
+              {!selected._isMileage && !selected.receipt_file && !selected.receipt_url && !selected.primary_receipt_file_url && !selected.receipt_files?.[0]?.file_url && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium"
                   style={{ backgroundColor: "rgba(255,92,122,0.1)", color: "#FF5C7A", border: "1px solid rgba(255,92,122,0.2)" }}>
                   <FileX className="h-4 w-4 flex-shrink-0" />

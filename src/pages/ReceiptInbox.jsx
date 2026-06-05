@@ -96,7 +96,11 @@ export default function ReceiptInbox() {
 
         // 4. Trigger OCR + Drive upload async (fire and forget)
         base44.functions.invoke("processInboxReceipt", { inbox_item_id: inboxItem.id })
-          .catch(err => console.error("OCR trigger failed:", err));
+          .then(() => setUploadQueue(q => q.map((e, idx) => idx === i ? { ...e, status: "done" } : e)))
+          .catch(err => {
+            console.error("OCR trigger failed:", err);
+            setUploadQueue(q => q.map((e, idx) => idx === i ? { ...e, status: "error" } : e));
+          });
 
       } catch (err) {
         console.error(`Failed to upload ${file.name}:`, err);

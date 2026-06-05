@@ -132,7 +132,7 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
           </DialogTitle>
         </DialogHeader>
 
-        {(item.status === "processing" || item.status === "inbox") && (
+        {(item.status === "processing" || item.status === "inbox" || item.status === "confirming") && (
           <div className="flex items-center gap-2 text-sm rounded-[10px] px-3 py-2.5 mb-1"
             style={{ backgroundColor: "rgba(127,91,255,0.1)", color: "#7F5BFF", border: "1px solid rgba(127,91,255,0.2)" }}>
             <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />

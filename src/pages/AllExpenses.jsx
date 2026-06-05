@@ -87,7 +87,7 @@ export default function AllExpenses() {
     }
   };
 
-  const months = [...new Set(expenses.map(e => e.month))].filter(Boolean);
+  const months = [...new Set(expenses.map(e => e.month || (e.date ? e.date.slice(0, 7) : null)))].filter(Boolean).sort().reverse();
 
   const filtered = expenses.filter(e => {
     if (filters.client !== "all" && !e.client_allocations?.some(a => a.client_code === filters.client)) return false;
@@ -306,12 +306,17 @@ export default function AllExpenses() {
                   ))}
                 </div>
               </div>
-              {selected.receipt_file && (
-                <div>
-                  <span className="text-muted-foreground">Receipt:</span>
-                  <img src={selected.receipt_file} alt="Receipt" className="mt-2 rounded-lg border max-h-60 object-contain w-full" />
-                </div>
-              )}
+              {(() => {
+                const imgUrl = selected.receipt_files?.[0]?.public_receipt_url || selected.primary_receipt_file_url || selected.receipt_url || selected.receipt_files?.[0]?.file_url || selected.receipt_file;
+                return imgUrl ? (
+                  <div>
+                    <span className="text-muted-foreground">Receipt:</span>
+                    <a href={imgUrl} target="_blank" rel="noopener noreferrer" className="block mt-2">
+                      <img src={imgUrl} alt="Receipt" className="rounded-lg border max-h-60 object-contain w-full" />
+                    </a>
+                  </div>
+                ) : null;
+              })()}
             </div>
           )}
         </DialogContent>
