@@ -271,10 +271,15 @@ export default function MyExpenses() {
             <p className="text-xs font-medium mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>This Month</p>
             <p className="text-lg font-semibold tabular-nums text-white">{formatCurrency(thisMonthTotal)}</p>
           </div>
-          <div className="rounded-[14px] px-4 py-3" style={{ backgroundColor: pendingReimbAmt > 0 ? "rgba(255,92,122,0.25)" : "rgba(255,255,255,0.1)" }}>
+          <motion.div
+            className="rounded-[14px] px-4 py-3"
+            style={{ backgroundColor: pendingReimbAmt > 0 ? "rgba(255,92,122,0.25)" : "rgba(255,255,255,0.1)" }}
+            animate={pendingReimbAmt > 0 ? { scale: [1, 1.03, 1] } : {}}
+            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
+          >
             <p className="text-xs font-medium mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>Owed to You</p>
             <p className="text-lg font-semibold tabular-nums text-white">{formatCurrency(pendingReimbAmt)}</p>
-          </div>
+          </motion.div>
           <div className="rounded-[14px] px-4 py-3" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
             <p className="text-xs font-medium mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>Drafts</p>
             <p className="text-lg font-semibold tabular-nums text-white">{drafts.length}</p>
@@ -438,7 +443,7 @@ export default function MyExpenses() {
             <button
               key={f.key}
               onClick={() => setQuickFilter(f.key)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-150"
+              className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-150 active:scale-95 hover:opacity-90"
               style={{
                 backgroundColor: quickFilter === f.key ? "#7F5BFF" : "var(--bg-surface-2)",
                 color: quickFilter === f.key ? "white" : "var(--text-secondary)",
@@ -495,10 +500,10 @@ export default function MyExpenses() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
                 onClick={() => setSelected(exp)}
+                whileHover={{ backgroundColor: "var(--bg-surface-2)", x: 2 }}
+                whileTap={{ scale: 0.995 }}
                 className="grid grid-cols-[100px_1fr_1fr_90px_90px_160px] gap-4 px-5 py-4 cursor-pointer transition-colors"
                 style={{ borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-soft)" : "none" }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = "var(--bg-surface-2)"}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
               >
                 <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{formatDateUK(exp.date)}</span>
                 <span className="text-sm" style={{ color: "var(--text-tertiary)" }}>
@@ -533,7 +538,9 @@ export default function MyExpenses() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
                 onClick={() => setSelected(exp)}
-                className="rounded-[16px] px-4 py-3.5 cursor-pointer active:scale-[0.99] transition-all"
+                whileHover={{ scale: 1.01, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}
+                whileTap={{ scale: 0.98 }}
+                className="rounded-[16px] px-4 py-3.5 cursor-pointer transition-all"
                 style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
