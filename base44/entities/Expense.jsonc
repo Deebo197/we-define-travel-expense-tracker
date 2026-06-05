@@ -7,6 +7,11 @@
       "format": "date",
       "title": "Date"
     },
+    "invoice_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Invoice Date"
+    },
     "client_allocations": {
       "type": "array",
       "title": "Client Allocations",

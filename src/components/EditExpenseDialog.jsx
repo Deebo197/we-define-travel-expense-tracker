@@ -21,6 +21,7 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
 
   const [form, setForm] = useState(() => ({
     date: expense?.date || "",
+    invoice_date: expense?.invoice_date || "",
     description: expense?.description || "",
     paid_amount: expense?.paid_amount ?? 0,
     actual_cost: expense?.actual_cost ?? 0,
@@ -84,21 +85,28 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
         </DialogHeader>
         <div className="space-y-4 text-sm">
 
-          {/* Date + Paid By */}
+          {/* Date + Invoice Date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-sm">Date</Label>
+              <Label className="text-sm">Date (Paid)</Label>
               <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
             </div>
             <div>
-              <Label className="text-sm">Paid By</Label>
-              <Select value={form.paid_by} onValueChange={v => setForm(f => ({ ...f, paid_by: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code} — {p.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label className="text-sm">Invoice Date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input type="date" value={form.invoice_date || ""} onChange={e => setForm(f => ({ ...f, invoice_date: e.target.value || null }))} className="mt-1" />
+              <p className="text-xs text-muted-foreground mt-1">Override which invoice period this appears in</p>
             </div>
+          </div>
+
+          {/* Paid By */}
+          <div>
+            <Label className="text-sm">Paid By</Label>
+            <Select value={form.paid_by} onValueChange={v => setForm(f => ({ ...f, paid_by: v }))}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PAID_BY_CODES.map(p => <SelectItem key={p.code} value={p.code}>{p.code} — {p.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Submitted By */}

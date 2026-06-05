@@ -37,6 +37,7 @@ export default function SubmitExpense() {
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split("T")[0],
+    invoice_date: "",
     description: "",
     paid_amount: "",
     actual_cost: "",
@@ -153,6 +154,7 @@ export default function SubmitExpense() {
 
       const expense = {
         date: form.date,
+        invoice_date: form.invoice_date || null,
         description: form.description,
         paid_amount: parseFloat(form.paid_amount),
         actual_cost: parseFloat(form.actual_cost) || parseFloat(form.paid_amount),
@@ -255,16 +257,28 @@ export default function SubmitExpense() {
           />
         </div>
 
-        {/* Date */}
-        <div>
-          <Label className="text-sm font-medium">Date *</Label>
-          <Input
-            type="date"
-            value={form.date}
-            onChange={(e) => updateField("date", e.target.value)}
-            className="mt-1.5"
-            required
-          />
+        {/* Date + Invoice Date */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-sm font-medium">Date *</Label>
+            <Input
+              type="date"
+              value={form.date}
+              onChange={(e) => updateField("date", e.target.value)}
+              className="mt-1.5"
+              required
+            />
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Invoice Date <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+            <Input
+              type="date"
+              value={form.invoice_date || ""}
+              onChange={(e) => updateField("invoice_date", e.target.value || "")}
+              className="mt-1.5"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Override invoice period</p>
+          </div>
         </div>
 
         {/* Description */}

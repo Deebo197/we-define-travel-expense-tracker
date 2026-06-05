@@ -36,12 +36,14 @@ export default function ClientReport() {
 
     const clientExpenses = allExpenses
       .filter(e => {
-        const d = new Date(e.date);
+        const effectiveDate = e.invoice_date || e.date;
+        const d = new Date(effectiveDate);
         return d >= from && d <= to && e.client_allocations?.some(a => a.client_code === clientCode);
       })
       .map(e => {
         const alloc = e.client_allocations.find(a => a.client_code === clientCode);
-        return { ...e, clientAmount: alloc?.amount || e.paid_amount, type: "expense" };
+        const effectiveDate = e.invoice_date || e.date;
+        return { ...e, clientAmount: alloc?.amount || e.paid_amount, type: "expense", effectiveDate };
       });
 
     const clientMileage = allMileage
@@ -57,17 +59,18 @@ export default function ClientReport() {
           description: `Mileage: ${m.purpose} (${m.stops?.map(s => s.postcode).join(" → ")})`,
           paid_amount: m.total_cost,
           type: "mileage",
+          effectiveDate: m.date,
         };
       });
 
-    return [...clientExpenses, ...clientMileage].sort((a, b) => new Date(a.date) - new Date(b.date));
+    return [...clientExpenses, ...clientMileage].sort((a, b) => new Date(a.effectiveDate) - new Date(b.effectiveDate));
   }, [clientCode, dateFrom, dateTo, allExpenses, allMileage]);
 
   // Group by month
   const grouped = useMemo(() => {
     const map = {};
     reportData.forEach(item => {
-      const key = item.month || (item.date ? formatMonth(item.date) : "Unknown");
+      const key = formatMonth(item.effectiveDate || item.date) || "Unknown";
       if (!map[key]) map[key] = [];
       map[key].push(item);
     });
@@ -346,7 +349,12 @@ export default function ClientReport() {
                 {/* Rows */}
                 {items.map((item, i) => (
                   <div key={item.id} className={`grid grid-cols-[90px_1fr_100px_100px_80px] px-3 py-2 text-sm border-b border-gray-100 ${i % 2 === 1 ? "bg-[#F5F5F5]" : ""}`}>
-                    <span>{formatDateUK(item.date)}</span>
+                    <span>
+                      {formatDateUK(item.effectiveDate || item.date)}
+                      {item.invoice_date && item.invoice_date !== item.date && (
+                        <span className="block text-xs text-gray-400" title="Original paid date">paid {formatDateUK(item.date)}</span>
+                      )}
+                    </span>
                     <span className="pr-2">
                       {item.description}
                       {item.currency && item.currency !== "GBP" && item.original_amount && (
