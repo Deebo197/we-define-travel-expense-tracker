@@ -55,7 +55,7 @@ export default function ClientReport() {
           ...m,
           clientAmount: alloc?.amount || m.total_cost,
           description: `Mileage: ${m.purpose} (${m.stops?.map(s => s.postcode).join(" → ")})`,
-          paid_amount: alloc?.amount || m.total_cost,
+          paid_amount: m.total_cost,
           type: "mileage",
         };
       });
