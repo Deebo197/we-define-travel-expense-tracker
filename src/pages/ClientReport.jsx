@@ -161,10 +161,10 @@ export default function ClientReport() {
         const descText = pdf.splitTextToSize(item.description || "", cols.receipt - cols.desc - 4);
         pdf.text(descText[0], cols.desc + 1, y + 5); // single line in table
 
-        // Receipt — clickable link if URL exists
+        // Receipt — prefer Google Drive public URL, fall back to base44 storage
         const receiptUrl = item.type === "mileage"
           ? (item.route_image_url || null)
-          : (item.receipt_file || item.primary_receipt_file_url || item.receipt_url || item.receipt_files?.[0]?.public_receipt_url || item.receipt_files?.[0]?.file_url || null);
+          : (item.receipt_files?.[0]?.public_receipt_url || item.primary_receipt_file_url || item.receipt_url || item.receipt_files?.[0]?.file_url || item.receipt_file || null);
         const receiptLabel = item.type === "mileage"
           ? (item.route_image_code || item.receipt_code || "Map")
           : (item.receipt_code || "");
@@ -351,11 +351,14 @@ export default function ClientReport() {
                     <span>
                       {item.type === "mileage" && item.route_image_url ? (
                         <a href={item.route_image_url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs" title="View route map">{item.route_image_code || "Map"}</a>
-                      ) : item.receipt_file ? (
-                        <a href={item.receipt_file} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs">{item.receipt_code}</a>
-                      ) : (
-                        <span className="text-gray-400 font-mono text-xs">{item.receipt_code}</span>
-                      )}
+                      ) : (() => {
+                        const url = item.receipt_files?.[0]?.public_receipt_url || item.primary_receipt_file_url || item.receipt_url || item.receipt_files?.[0]?.file_url || item.receipt_file;
+                        return url ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs">{item.receipt_code}</a>
+                        ) : (
+                          <span className="text-gray-400 font-mono text-xs">{item.receipt_code}</span>
+                        );
+                      })()}
                     </span>
                     <span className="text-right font-medium">{formatCurrency(item.paid_amount)}</span>
                     <span className="text-right font-medium">{formatCurrency(item.clientAmount)}</span>
