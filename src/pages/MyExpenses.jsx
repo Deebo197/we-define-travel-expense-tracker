@@ -172,7 +172,7 @@ export default function MyExpenses() {
     confirmed.filter(e => !e.reimbursement_required).reduce((s, e) => s + (e.paid_amount || 0), 0),
     [confirmed]);
   const missingReceiptCount = useMemo(() =>
-    confirmed.filter(e => !e.receipt_file && !e.receipt_url).length,
+    confirmed.filter(e => !e._isMileage && !e.receipt_file && !e.receipt_url).length,
     [confirmed]);
   const totalSpend = useMemo(() => confirmed.reduce((s, e) => s + (e.paid_amount || 0), 0), [confirmed]);
 
@@ -575,8 +575,8 @@ export default function MyExpenses() {
                 )}
               </div>
 
-              {/* Missing receipt warning */}
-              {!selected.receipt_file && !selected.receipt_url && (
+              {/* Missing receipt warning — not applicable for mileage */}
+              {!selected._isMileage && !selected.receipt_file && !selected.receipt_url && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium"
                   style={{ backgroundColor: "rgba(255,92,122,0.1)", color: "#FF5C7A", border: "1px solid rgba(255,92,122,0.2)" }}>
                   <FileX className="h-4 w-4 flex-shrink-0" />
