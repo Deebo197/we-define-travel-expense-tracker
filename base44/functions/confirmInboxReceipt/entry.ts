@@ -15,7 +15,7 @@
  * by Base44's entity layer — two simultaneous creates with the same inbox_item_id
  * will result in one success and one error, giving us a true create-based mutex.
  */
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 
 

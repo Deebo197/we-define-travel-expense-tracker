@@ -15,7 +15,7 @@
  * 5. Update item with extracted fields + Drive info
  * 6. Set status to "needs_review" (or "failed" on error)
  */
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 function getMonthFolderName(dateStr) {
   const d = new Date(dateStr || new Date());
