@@ -85,17 +85,145 @@ export default function ClientReport() {
   const handleDownload = async () => {
     setGenerating(true);
     const { default: jsPDF } = await import("jspdf");
-    const { default: html2canvas } = await import("html2canvas");
-
-    const element = reportRef.current;
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-    const imgData = canvas.toDataURL("image/png");
 
     const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+    const usableW = pageW - margin * 2;
+    let y = margin;
 
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    const checkPage = (needed = 8) => {
+      if (y + needed > pageH - margin) {
+        pdf.addPage();
+        y = margin;
+      }
+    };
+
+    // ── Header ──────────────────────────────────────────────────────────
+    pdf.setFontSize(16).setFont(undefined, "bold");
+    pdf.text("EXPENSE BREAKDOWN SUMMARY", pageW - margin, y, { align: "right" });
+    pdf.setFontSize(10).setFont(undefined, "normal").setTextColor(100);
+    y += 6;
+    pdf.text(`Prepared for: ${clientName}`, pageW - margin, y, { align: "right" });
+    y += 5;
+    pdf.text(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }), pageW - margin, y, { align: "right" });
+
+    y += 10;
+    pdf.setDrawColor(200).line(margin, y, pageW - margin, y);
+    y += 8;
+
+    // ── TO block ────────────────────────────────────────────────────────
+    pdf.setFontSize(11).setFont(undefined, "bold").setTextColor(200, 16, 46);
+    pdf.text(`TO: ${clientName}`, margin, y);
+    y += 6;
+    pdf.setFontSize(8.5).setFont(undefined, "normal").setTextColor(80);
+    const intro = `Please find below a full itemised breakdown of all expenses charged to ${clientName} by We Define Travel for the period ${dateRange}. All amounts are in GBP (£).`;
+    const introLines = pdf.splitTextToSize(intro, usableW);
+    pdf.text(introLines, margin, y);
+    y += introLines.length * 5 + 6;
+
+    // ── Column layout ────────────────────────────────────────────────────
+    const cols = { date: margin, desc: margin + 22, receipt: margin + usableW * 0.58, total: margin + usableW * 0.73, split: margin + usableW * 0.87 };
+
+    for (const [month, items] of Object.entries(grouped)) {
+      checkPage(14);
+
+      // Month header bar
+      pdf.setFillColor(45, 45, 45).rect(margin, y, usableW, 7, "F");
+      pdf.setFontSize(9).setFont(undefined, "bold").setTextColor(255);
+      pdf.text(month.toUpperCase(), margin + 2, y + 5);
+      pdf.text(`${items.length} item${items.length !== 1 ? "s" : ""}`, pageW - margin - 2, y + 5, { align: "right" });
+      y += 7;
+
+      // Column headers
+      pdf.setFillColor(245, 245, 245).rect(margin, y, usableW, 6, "F");
+      pdf.setFontSize(7.5).setFont(undefined, "bold").setTextColor(120);
+      pdf.text("Date", cols.date + 1, y + 4.5);
+      pdf.text("Description", cols.desc + 1, y + 4.5);
+      pdf.text("Receipt", cols.receipt + 1, y + 4.5);
+      pdf.text("Total Amt", cols.total + 1, y + 4.5);
+      pdf.text("Split Amt", cols.split + 1, y + 4.5);
+      y += 6;
+
+      // Rows
+      items.forEach((item, i) => {
+        const rowH = 7;
+        checkPage(rowH + 2);
+
+        if (i % 2 === 1) {
+          pdf.setFillColor(250, 250, 250).rect(margin, y, usableW, rowH, "F");
+        }
+
+        pdf.setFontSize(8).setFont(undefined, "normal").setTextColor(40);
+        pdf.text(formatDateUK(item.date), cols.date + 1, y + 5);
+
+        const descText = pdf.splitTextToSize(item.description || "", cols.receipt - cols.desc - 4);
+        pdf.text(descText[0], cols.desc + 1, y + 5); // single line in table
+
+        // Receipt — clickable link if URL exists
+        const receiptUrl = item.type === "mileage"
+          ? (item.route_image_url || null)
+          : (item.receipt_file || item.primary_receipt_file_url || item.receipt_url || item.receipt_files?.[0]?.public_receipt_url || item.receipt_files?.[0]?.file_url || null);
+        const receiptLabel = item.type === "mileage"
+          ? (item.route_image_code || item.receipt_code || "Map")
+          : (item.receipt_code || "");
+
+        if (receiptUrl && receiptLabel) {
+          pdf.setTextColor(200, 16, 46).setFont(undefined, "normal");
+          pdf.text(receiptLabel, cols.receipt + 1, y + 5);
+          const linkW = pdf.getTextWidth(receiptLabel);
+          pdf.link(cols.receipt + 1, y + 1, linkW, 5, { url: receiptUrl });
+        } else if (receiptLabel) {
+          pdf.setTextColor(150).setFont(undefined, "normal");
+          pdf.text(receiptLabel, cols.receipt + 1, y + 5);
+        }
+
+        pdf.setTextColor(40).setFont(undefined, "normal");
+        pdf.text(formatCurrency(item.paid_amount), pageW - margin - (usableW - (cols.split - margin)) - 2, y + 5, { align: "right" });
+        pdf.text(formatCurrency(item.clientAmount), pageW - margin - 2, y + 5, { align: "right" });
+
+        pdf.setDrawColor(230).line(margin, y + rowH, pageW - margin, y + rowH);
+        y += rowH;
+      });
+
+      // Month subtotal bar
+      checkPage(8);
+      pdf.setFillColor(200, 16, 46).rect(margin, y, usableW, 7, "F");
+      pdf.setFontSize(8.5).setFont(undefined, "bold").setTextColor(255);
+      pdf.text(`${month.toUpperCase()} TOTAL`, cols.receipt - 2, y + 5, { align: "right" });
+      pdf.text(formatCurrency(items.reduce((s, e) => s + (e.paid_amount || 0), 0)), pageW - margin - (usableW - (cols.split - margin)) - 2, y + 5, { align: "right" });
+      pdf.text(formatCurrency(items.reduce((s, e) => s + (e.clientAmount || 0), 0)), pageW - margin - 2, y + 5, { align: "right" });
+      y += 10;
+    }
+
+    // ── Grand total ──────────────────────────────────────────────────────
+    if (reportData.length > 0) {
+      checkPage(10);
+      pdf.setFillColor(200, 16, 46).rect(margin, y, usableW, 8, "F");
+      pdf.setFontSize(10).setFont(undefined, "bold").setTextColor(255);
+      pdf.text("GRAND TOTAL", margin + 2, y + 5.5);
+      pdf.text(formatCurrency(grandTotal), pageW - margin - 2, y + 5.5, { align: "right" });
+      y += 12;
+    }
+
+    // ── Footer ───────────────────────────────────────────────────────────
+    checkPage(24);
+    pdf.setDrawColor(200).line(margin, y, pageW - margin, y);
+    y += 6;
+    pdf.setFontSize(8).setFont(undefined, "italic").setTextColor(120);
+    pdf.text("All amounts shown are Zero Rated for VAT purposes. No VAT is applicable on these expenses.", margin, y);
+    y += 6;
+    pdf.setFont(undefined, "normal");
+    pdf.text("Warm regards,", margin, y); y += 5;
+    pdf.setFont(undefined, "bold").setTextColor(60);
+    pdf.text(COMPANY_INFO.director, margin, y); y += 4;
+    pdf.setFont(undefined, "normal").setTextColor(120);
+    pdf.text(`Director, ${COMPANY_INFO.name}`, margin, y); y += 4;
+    pdf.text(COMPANY_INFO.directorEmail, margin, y); y += 10;
+    pdf.setFontSize(7.5).setTextColor(160);
+    pdf.text(`${COMPANY_INFO.name} | Registered in England & Wales No. ${COMPANY_INFO.regNumber} | VAT No. ${COMPANY_INFO.vatNumber}`, pageW / 2, y, { align: "center" });
+
     pdf.save(`WDT-Expense-Report-${clientCode}-${dateFrom}-to-${dateTo}.pdf`);
     setGenerating(false);
   };
