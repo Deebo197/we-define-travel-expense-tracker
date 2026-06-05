@@ -357,7 +357,7 @@ ${csvText}`,
                       {editingDesc[txn.id] !== undefined ? (
                         <input
                           autoFocus
-                          className="w-full border border-primary rounded px-2 py-0.5 text-sm"
+                          className="w-full border border-primary rounded px-2 py-0.5 text-sm bg-[var(--bg-surface-2)] text-[var(--text-primary)]"
                           value={editingDesc[txn.id]}
                           onChange={e => setEditingDesc(prev => ({ ...prev, [txn.id]: e.target.value }))}
                           onBlur={() => saveDescAlias(txn, editingDesc[txn.id])}
