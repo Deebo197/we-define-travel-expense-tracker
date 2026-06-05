@@ -479,12 +479,13 @@ export default function MyExpenses() {
         <>
           {/* Desktop table */}
           <div className="hidden md:block rounded-[20px] overflow-hidden card-elevation" style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-soft)" }}>
-            <div className="grid grid-cols-[100px_1fr_1fr_110px_160px] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+            <div className="grid grid-cols-[100px_1fr_1fr_90px_90px_160px] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)", borderBottom: "1px solid var(--border-soft)" }}>
               <span>Date</span>
               <span>Client(s)</span>
               <span>Description</span>
               <span className="text-right">Amount</span>
+              <span className="text-center">Paid By</span>
               <span className="text-center">Status</span>
             </div>
             {filtered.map((exp, idx) => (
@@ -494,7 +495,7 @@ export default function MyExpenses() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
                 onClick={() => setSelected(exp)}
-                className="grid grid-cols-[100px_1fr_1fr_110px_160px] gap-4 px-5 py-4 cursor-pointer transition-colors"
+                className="grid grid-cols-[100px_1fr_1fr_90px_90px_160px] gap-4 px-5 py-4 cursor-pointer transition-colors"
                 style={{ borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-soft)" : "none" }}
                 onMouseEnter={e => e.currentTarget.style.backgroundColor = "var(--bg-surface-2)"}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}
@@ -512,6 +513,9 @@ export default function MyExpenses() {
                   {exp.currency && exp.currency !== "GBP" && exp.original_amount && (
                     <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>{formatForeignCurrency(exp.original_amount, exp.currency)}</div>
                   )}
+                </div>
+                <div className="flex justify-center items-start pt-0.5">
+                  <PersonAvatar code={exp.paid_by || exp.staff_member} size="sm" showName={false} />
                 </div>
                 <div className="flex justify-center items-start pt-0.5">
                   <ExpenseStatusBadge expense={exp} />
