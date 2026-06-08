@@ -140,18 +140,7 @@
   "rls": {
     "create": {},
     "read": {},
-    "update": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "created_by": "{{user.email}}"
-        }
-      ]
-    },
+    "update": {},
     "delete": {
       "user_condition": {
         "role": "admin"

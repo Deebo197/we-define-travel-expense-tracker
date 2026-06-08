@@ -452,10 +452,14 @@ export default function MileageLog() {
                 <Label className="text-sm">Return journey</Label>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className="text-sm font-medium">Total Miles</Label>
                   <Input type="number" step="0.1" value={editForm.total_miles} onChange={e => setEditForm(f => ({ ...f, total_miles: parseFloat(e.target.value) || 0 }))} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Rate per Mile £</Label>
+                  <Input type="number" step="0.001" value={editForm.rate_per_mile ?? ""} onChange={e => setEditForm(f => ({ ...f, rate_per_mile: parseFloat(e.target.value) || 0 }))} className="mt-1" />
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Total Cost £</Label>
@@ -511,6 +515,7 @@ export default function MileageLog() {
                       id: editJourney.id,
                       data: {
                         ...editForm,
+                        rate_per_mile: parseFloat(editForm.rate_per_mile) || 0,
                         staff_member: editForm.paid_by,
                         staff_member_name: paidByEntry?.label || editForm.paid_by,
                         reimbursement_required: isReimbursementRequired(editForm.paid_by),
