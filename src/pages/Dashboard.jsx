@@ -145,10 +145,12 @@ export default function Dashboard() {
   const recentExpenses = useMemo(() => expenses.slice(0, 10), [expenses]);
 
   // Needs Attention data (all-time, not period-filtered)
+  // Expenses explicitly approved without a receipt are excluded from all attention checks
+  const isApprovedNoReceipt = (e) => e.receipt_url === "no_receipt_required";
   const draftExpenses = useMemo(() => expenses.filter(e => e.status === "draft"), [expenses]);
-  const missingReceipts = useMemo(() => expenses.filter(e => e.status !== "draft" && !e.receipt_file && !e.receipt_url), [expenses]);
-  const syncFailed = useMemo(() => expenses.filter(e => e.drive_sync_failed), [expenses]);
-  const uncategorised = useMemo(() => expenses.filter(e => e.status !== "draft" && !e.category), [expenses]);
+  const missingReceipts = useMemo(() => expenses.filter(e => !isApprovedNoReceipt(e) && e.status !== "draft" && !e.receipt_file && !e.receipt_url), [expenses]);
+  const syncFailed = useMemo(() => expenses.filter(e => !isApprovedNoReceipt(e) && e.drive_sync_failed), [expenses]);
+  const uncategorised = useMemo(() => expenses.filter(e => !isApprovedNoReceipt(e) && e.status !== "draft" && !e.category), [expenses]);
 
   const attentionItems = useMemo(() => {
     // Combine and deduplicate by id, most recent first
