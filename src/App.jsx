@@ -20,6 +20,7 @@ import AdminRoute from './components/AdminRoute';
 import HomeRedirect from './pages/HomeRedirect';
 import ReceiptInbox from './pages/ReceiptInbox';
 import Help from './pages/Help';
+import Landing from './pages/Landing';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -47,8 +48,9 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/home" element={<HomeRedirect />} />
         <Route path="/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
         <Route path="/submit-expense" element={<SubmitExpense />} />
         <Route path="/my-expenses" element={<MyExpenses />} />
