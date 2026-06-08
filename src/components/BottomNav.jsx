@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, PlusCircle, Receipt, List,
-  CreditCard, FileText, MapPin, Building2, Inbox
+  CreditCard, FileText, MapPin, Building2, Inbox, HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -16,6 +16,7 @@ const navItems = [
   { path: "/receipt-inbox",  label: "Inbox",        icon: Inbox,           adminOnly: false },
   { path: "/mileage-log",    label: "Mileage",      icon: MapPin,          adminOnly: false },
   { path: "/accounts",       label: "Accounts",     icon: Building2,       adminOnly: true },
+  { path: "/help",           label: "Help",         icon: HelpCircle,      adminOnly: false },
 ];
 
 export default function BottomNav() {

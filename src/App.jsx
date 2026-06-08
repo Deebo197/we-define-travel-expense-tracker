@@ -19,6 +19,7 @@ import Accounts from './pages/Accounts';
 import AdminRoute from './components/AdminRoute';
 import HomeRedirect from './pages/HomeRedirect';
 import ReceiptInbox from './pages/ReceiptInbox';
+import Help from './pages/Help';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
         <Route path="/receipt-inbox" element={<ReceiptInbox />} />
         <Route path="/mileage-log" element={<MileageLog />} />
         <Route path="/accounts" element={<AdminRoute><Accounts /></AdminRoute>} />
+        <Route path="/help" element={<Help />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>
