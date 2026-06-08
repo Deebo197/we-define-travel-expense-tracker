@@ -151,9 +151,11 @@ export default function Help() {
   }, []);
 
   useEffect(() => {
-    base44.agents.subscribeToConversation(conversation?.id, (data) => {
+    if (!conversation?.id) return;
+    const unsubscribe = base44.agents.subscribeToConversation(conversation.id, (data) => {
       setMessages(data.messages || []);
     });
+    return () => unsubscribe?.();
   }, [conversation?.id]);
 
   useEffect(() => {
