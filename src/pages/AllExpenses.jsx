@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +35,17 @@ export default function AllExpenses() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [editExpense, setEditExpense] = useState(null);
   const [duplicateExpense, setDuplicateExpense] = useState(null);
+  const [receiptMenu, setReceiptMenu] = useState(null); // { exp, x, y }
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!receiptMenu) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setReceiptMenu(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [receiptMenu]);
 
   const markPaid = useMutation({
     mutationFn: async (ids) => {
@@ -256,11 +267,29 @@ export default function AllExpenses() {
                     {(() => {
                       const receiptUrl = exp.receipt_files?.[0]?.public_receipt_url || exp.primary_receipt_file_url || exp.receipt_url || exp.receipt_files?.[0]?.file_url || exp.receipt_file;
                       return receiptUrl ? (
-                        <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-mono text-xs hover:underline flex items-center gap-1">
+                        <a
+                          href={receiptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary font-mono text-xs hover:underline flex items-center gap-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setReceiptMenu({ exp, x: rect.left, y: rect.bottom + 6 });
+                          }}
+                        >
                           {exp.receipt_code} <ExternalLink className="h-3 w-3" />
                         </a>
                       ) : (
-                        <span className="text-xs text-muted-foreground font-mono">{exp.receipt_code}</span>
+                        <button
+                          className="text-xs text-muted-foreground font-mono hover:text-foreground transition-colors"
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setReceiptMenu({ exp, x: rect.left, y: rect.bottom + 6 });
+                          }}
+                        >
+                          {exp.receipt_code || "—"}
+                        </button>
                       );
                     })()}
                     {exp.drive_sync_failed && (
@@ -344,6 +373,65 @@ export default function AllExpenses() {
         open={!!duplicateExpense}
         onClose={() => { setDuplicateExpense(null); setSelectedIds([]); }}
       />
+
+      {/* Floating receipt context menu */}
+      <AnimatePresence>
+        {receiptMenu && (
+          <motion.div
+            ref={menuRef}
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="fixed z-50 rounded-[14px] shadow-xl overflow-hidden"
+            style={{
+              left: receiptMenu.x,
+              top: receiptMenu.y,
+              backgroundColor: "var(--bg-elevated)",
+              border: "1px solid var(--border-strong)",
+              minWidth: 140,
+            }}
+          >
+            {/* Open receipt link if exists */}
+            {(() => {
+              const url = receiptMenu.exp.receipt_files?.[0]?.public_receipt_url || receiptMenu.exp.primary_receipt_file_url || receiptMenu.exp.receipt_url || receiptMenu.exp.receipt_files?.[0]?.file_url || receiptMenu.exp.receipt_file;
+              return url ? (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-[rgba(127,91,255,0.12)]"
+                  style={{ color: "var(--text-primary)" }}
+                  onClick={() => setReceiptMenu(null)}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                  Open Receipt
+                </a>
+              ) : null;
+            })()}
+            <button
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-[rgba(127,91,255,0.12)]"
+              style={{ color: "var(--text-primary)" }}
+              onClick={() => { setEditExpense(receiptMenu.exp); setReceiptMenu(null); }}
+            >
+              <Pencil className="h-3.5 w-3.5 text-primary" />
+              Edit
+            </button>
+            <div style={{ height: 1, backgroundColor: "var(--border-soft)" }} />
+            <button
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-[rgba(255,92,122,0.1)]"
+              style={{ color: "#FF5C7A" }}
+              onClick={() => {
+                setReceiptMenu(null);
+                if (confirm("Delete this expense?")) deleteExpenses.mutate([receiptMenu.exp.id]);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     </AnimatedPage>
   );
