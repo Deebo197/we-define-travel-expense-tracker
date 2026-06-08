@@ -43,15 +43,29 @@ async function flagSyncFailed(base44, entityType, entityId) {
   } catch (_) { /* best-effort */ }
 }
 
+async function getMyDriveRootId(authHeader) {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files/root?fields=id', {
+    headers: authHeader,
+  });
+  const json = await res.json();
+  return json.id;
+}
+
 async function getOrCreateCachedFolder(base44, authHeader, name, parentFolderId) {
   const cacheKey = parentFolderId ? `${parentFolderId}/${name}` : name;
   const existing = await base44.asServiceRole.entities.DriveFolder.filter({ name: cacheKey });
   if (existing.length > 0) return existing[0].folder_id;
 
+  // For the root folder, explicitly use My Drive root as parent
+  let resolvedParent = parentFolderId;
+  if (!resolvedParent) {
+    resolvedParent = await getMyDriveRootId(authHeader);
+  }
+
   const meta = {
     name,
     mimeType: 'application/vnd.google-apps.folder',
-    ...(parentFolderId ? { parents: [parentFolderId] } : {}),
+    parents: [resolvedParent],
   };
   const res = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
@@ -62,7 +76,7 @@ async function getOrCreateCachedFolder(base44, authHeader, name, parentFolderId)
   await base44.asServiceRole.entities.DriveFolder.create({
     name: cacheKey,
     folder_id: json.id,
-    parent_folder_id: parentFolderId || '',
+    parent_folder_id: resolvedParent,
   });
   return json.id;
 }
