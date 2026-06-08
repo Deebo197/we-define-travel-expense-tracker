@@ -85,7 +85,7 @@ export default function Landing() {
           <div className="w-8 h-8 brand-gradient rounded-xl flex items-center justify-center">
             <Receipt className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-lg tracking-tight text-white">WDT Expenses</span>
+          <span className="font-bold text-lg tracking-tight text-white">Repevo</span>
         </div>
         <Link to="/home">
           <Button size="sm" className="h-9 px-5 text-sm">
@@ -141,7 +141,7 @@ export default function Landing() {
               <div className="w-3 h-3 rounded-full bg-[#FF5C7A]" />
               <div className="w-3 h-3 rounded-full bg-[#FFB547]" />
               <div className="w-3 h-3 rounded-full bg-[#3DDC97]" />
-              <span className="ml-3 text-xs text-[var(--text-tertiary)] font-mono">WDT Expenses — Dashboard</span>
+              <span className="ml-3 text-xs text-[var(--text-tertiary)] font-mono">Repevo — Dashboard</span>
             </div>
             <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
@@ -302,10 +302,10 @@ export default function Landing() {
               <h2 className="text-4xl font-bold mb-4">Ready to get started?</h2>
               <p className="text-[var(--text-secondary)] text-lg mb-8">
                 Sign in to access your expense dashboard, submit receipts, and generate client reports.
-              </p>
-              <Link to="/home">
+                </p>
+                <Link to="/home">
                 <Button size="lg">
-                  Sign In to WDT Expenses <ArrowRight className="w-4 h-4" />
+                  Sign In to Repevo <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
             </div>
@@ -320,9 +320,9 @@ export default function Landing() {
             <div className="w-6 h-6 brand-gradient rounded-lg flex items-center justify-center">
               <Receipt className="w-3 h-3 text-white" />
             </div>
-            <span className="font-semibold text-sm">WDT Expenses</span>
+            <span className="font-semibold text-sm">Repevo</span>
           </div>
-          <p className="text-xs text-[var(--text-tertiary)]">© 2026 WDT. All rights reserved.</p>
+          <p className="text-xs text-[var(--text-tertiary)]">© 2026 Repevo. All rights reserved.</p>
           <Link to="/home" className="text-sm text-[var(--text-tertiary)] hover:text-white transition-colors">
             Sign In →
           </Link>
