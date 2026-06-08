@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, CreditCard, Receipt, AlertTriangle, FileX, RefreshCw, Tag, Clock, CheckCircle2, Inbox } from "lucide-react";
+import { TrendingUp, CreditCard, Receipt, AlertTriangle, FileX, RefreshCw, Tag, Clock, CheckCircle2, Inbox, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import AnimatedPage from "@/components/AnimatedPage";
@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { formatCurrency, formatDateUK, getClientName, getPaidByLabel, CLIENT_CODES } from "@/lib/constants";
 import PersonAvatar from "../components/PersonAvatar";
 import ExpenseStatusBadge from "../components/ExpenseStatusBadge";
+import EditExpenseDialog from "../components/EditExpenseDialog";
 
 function getMonthRange(filter) {
   const now = new Date();
@@ -71,6 +72,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const [period, setPeriod] = useState("this_month");
+  const [editingExpense, setEditingExpense] = useState(null);
   const heroRef = useRef(null);
   const handleHeroMouseMove = (e) => {
     const el = heroRef.current;
@@ -350,13 +352,15 @@ export default function Dashboard() {
                    animate={{ opacity: 1, x: 0 }}
                    transition={{ duration: 0.22, delay: idx * 0.03, ease: [0.22, 1, 0.36, 1] }}
                    whileHover={{ backgroundColor: "var(--bg-surface-2)", x: 2 }}
-                   className="flex items-center gap-3 px-4 py-3"
+                   className="flex items-center gap-3 px-4 py-3 cursor-pointer group"
                    style={{ borderBottom: idx < attentionItems.length - 1 ? "1px solid var(--border-soft)" : "none" }}
+                   onClick={() => setEditingExpense(exp)}
                  >
                    <span className="text-xs flex-shrink-0 w-20" style={{ color: "var(--text-tertiary)" }}>{formatDateUK(exp.date)}</span>
                    <p className="text-sm flex-1 truncate" style={{ color: "var(--text-secondary)" }}>{exp.description}</p>
                    <ExpenseStatusBadge expense={exp} />
                    <span className="text-sm font-semibold tabular-nums flex-shrink-0" style={{ color: "var(--text-primary)" }}>{formatCurrency(exp.paid_amount)}</span>
+                   <Pencil className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: "var(--text-tertiary)" }} />
                  </motion.div>
                 ))}
               </div>
@@ -488,6 +492,13 @@ export default function Dashboard() {
         </StaggerList>
       </div>
     </div>
+
+    <EditExpenseDialog
+      expense={editingExpense}
+      open={!!editingExpense}
+      onClose={() => setEditingExpense(null)}
+      queryKeys={[["allExpenses"]]}
+    />
     </AnimatedPage>
   );
 }
