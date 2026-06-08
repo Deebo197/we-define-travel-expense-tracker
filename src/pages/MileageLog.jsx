@@ -234,6 +234,7 @@ export default function MileageLog() {
     setEditForm({
       date: j.date,
       vehicle_type: j.vehicle_type || "Car",
+      rate_per_mile: j.rate_per_mile ?? getMileageRate(j.vehicle_type || "Car", j.date),
       purpose: j.purpose,
       paid_by: j.staff_member || "",
       stops: j.stops?.length >= 2 ? j.stops : [{ label: "A", postcode: "" }, { label: "B", postcode: "" }],
