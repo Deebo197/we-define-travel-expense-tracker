@@ -373,7 +373,7 @@ export default function MileageLog() {
 
       {/* Edit journey dialog */}
       <Dialog open={!!editJourney} onOpenChange={() => setEditJourney(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Mileage Journey</DialogTitle>
           </DialogHeader>
@@ -481,7 +481,7 @@ export default function MileageLog() {
                     <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                     <SelectContent>
                       {getCategoriesForClient(editForm.client_allocations?.[0]?.client_code).map(c => (
-                        <CategorySelectItem key={c} value={c} />
+                        <CategorySelectItem key={c} category={c} />
                       ))}
                     </SelectContent>
                   </Select>
@@ -605,7 +605,7 @@ export default function MileageLog() {
 
             <Button type="button" variant="outline" className="w-full gap-2" onClick={calculateDistance} disabled={calculating}>
               {calculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-              Calculate Distance & Cost
+              Calculate Distance &amp; Cost
             </Button>
 
             <div className="grid grid-cols-2 gap-3">
@@ -643,7 +643,7 @@ export default function MileageLog() {
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>
                     {mileageCategories.map(c => (
-                      <CategorySelectItem key={c} value={c} />
+                       <CategorySelectItem key={c} category={c} />
                     ))}
                   </SelectContent>
                 </Select>
