@@ -52,16 +52,30 @@ async function getMyDriveRootId(authHeader) {
 }
 
 async function getOrCreateCachedFolder(base44, authHeader, name, parentFolderId) {
-  const cacheKey = parentFolderId ? `${parentFolderId}/${name}` : name;
-  const existing = await base44.asServiceRole.entities.DriveFolder.filter({ name: cacheKey });
-  if (existing.length > 0) return existing[0].folder_id;
-
-  // For the root folder, explicitly use My Drive root as parent
+  // For the root folder, resolve My Drive root as parent
   let resolvedParent = parentFolderId;
   if (!resolvedParent) {
     resolvedParent = await getMyDriveRootId(authHeader);
   }
 
+  const cacheKey = `${resolvedParent}/${name}`;
+
+  // Check DB cache first
+  const existing = await base44.asServiceRole.entities.DriveFolder.filter({ name: cacheKey });
+  if (existing.length > 0) return existing[0].folder_id;
+
+  // Search Drive for an existing folder with this name under this parent
+  const q = encodeURIComponent(`name='${name}' and '${resolvedParent}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&spaces=drive`, { headers: authHeader });
+  const searchJson = await searchRes.json();
+  if (searchJson.files && searchJson.files.length > 0) {
+    const folderId = searchJson.files[0].id;
+    // Cache it for next time
+    await base44.asServiceRole.entities.DriveFolder.create({ name: cacheKey, folder_id: folderId, parent_folder_id: resolvedParent });
+    return folderId;
+  }
+
+  // Not found — create it
   const meta = {
     name,
     mimeType: 'application/vnd.google-apps.folder',

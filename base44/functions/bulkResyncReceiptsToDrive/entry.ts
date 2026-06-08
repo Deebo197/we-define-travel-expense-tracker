@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       return { year: String(year), monthFolder: `${year}-${mm} ${MONTH_NAMES[month]}` };
     }
 
-    // Folder cache (in-memory for this run, DB already cleared above)
+    // Folder cache (in-memory for this run)
     const folderCache = {};
     async function getMyDriveRootId() {
       const res = await fetch('https://www.googleapis.com/drive/v3/files/root?fields=id', { headers: authHeader });
@@ -97,6 +97,17 @@ Deno.serve(async (req) => {
     async function getOrCreateFolder(name, parentId) {
       const key = `${parentId}/${name}`;
       if (folderCache[key]) return folderCache[key];
+
+      // Search for existing folder with this name under this parent
+      const q = encodeURIComponent(`name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&spaces=drive`, { headers: authHeader });
+      const searchJson = await searchRes.json();
+      if (searchJson.files && searchJson.files.length > 0) {
+        folderCache[key] = searchJson.files[0].id;
+        return folderCache[key];
+      }
+
+      // Not found — create it
       const meta = { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] };
       const res = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
@@ -105,7 +116,6 @@ Deno.serve(async (req) => {
       });
       const json = await res.json();
       folderCache[key] = json.id;
-      await base44.asServiceRole.entities.DriveFolder.create({ name: key, folder_id: json.id, parent_folder_id: parentId });
       return json.id;
     }
     async function uploadFile(fileUrl, fileName, folderId) {
