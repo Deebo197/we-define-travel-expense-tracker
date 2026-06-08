@@ -274,8 +274,7 @@ export default function AllExpenses() {
                           className="text-primary font-mono text-xs hover:underline flex items-center gap-1"
                           onClick={(e) => {
                             e.preventDefault();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setReceiptMenu({ exp, x: rect.left, y: rect.bottom + 6 });
+                            setReceiptMenu({ exp, x: e.clientX, y: e.clientY + 8 });
                           }}
                         >
                           {exp.receipt_code} <ExternalLink className="h-3 w-3" />
@@ -284,8 +283,7 @@ export default function AllExpenses() {
                         <button
                           className="text-xs text-muted-foreground font-mono hover:text-foreground transition-colors"
                           onClick={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setReceiptMenu({ exp, x: rect.left, y: rect.bottom + 6 });
+                            setReceiptMenu({ exp, x: e.clientX, y: e.clientY + 8 });
                           }}
                         >
                           {exp.receipt_code || "—"}
@@ -422,8 +420,9 @@ export default function AllExpenses() {
               className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-[rgba(255,92,122,0.1)]"
               style={{ color: "#FF5C7A" }}
               onClick={() => {
+                const expToDelete = receiptMenu.exp;
                 setReceiptMenu(null);
-                if (confirm("Delete this expense?")) deleteExpenses.mutate([receiptMenu.exp.id]);
+                if (confirm("Delete this expense?")) deleteExpenses.mutate([expToDelete.id]);
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
