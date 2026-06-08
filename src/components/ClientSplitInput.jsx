@@ -9,6 +9,7 @@ import { CLIENT_CODES, formatCurrency } from "@/lib/constants";
 
 export default function ClientSplitInput({ allocations, onChange, paidAmount }) {
   const [splitMode, setSplitMode] = useState(allocations.length > 1);
+  const [inputMode, setInputMode] = useState("percentage"); // "percentage" | "amount"
 
   const handleToggleSplit = (checked) => {
     setSplitMode(checked);
@@ -36,6 +37,10 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
     } else if (field === "percentage") {
       const pct = parseFloat(value) || 0;
       updated[index] = { ...updated[index], percentage: pct, amount: Math.round(((paidAmount || 0) * pct / 100) * 100) / 100 };
+    } else if (field === "amount") {
+      const amt = parseFloat(value) || 0;
+      const pct = paidAmount ? Math.round((amt / paidAmount * 100) * 100) / 100 : 0;
+      updated[index] = { ...updated[index], amount: amt, percentage: pct };
     }
     onChange(updated);
   };
@@ -53,7 +58,9 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
 
   const totalPct = allocations.reduce((sum, a) => sum + (a.percentage || 0), 0);
   const totalAmount = allocations.reduce((sum, a) => sum + (a.amount || 0), 0);
-  const isValid = Math.abs(totalPct - 100) < 0.01;
+  const isValid = inputMode === "percentage"
+    ? Math.abs(totalPct - 100) < 0.01
+    : paidAmount ? Math.abs(totalAmount - paidAmount) < 0.01 : Math.abs(totalPct - 100) < 0.01;
 
   // Single client mode
   if (!splitMode) {
@@ -94,6 +101,19 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
           <Label className="text-sm">Split across clients</Label>
         </div>
         <div className="flex gap-2">
+          {/* % / £ toggle */}
+          <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setInputMode("percentage")}
+              className={`px-3 py-1.5 transition-colors ${inputMode === "percentage" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"}`}
+            >%</button>
+            <button
+              type="button"
+              onClick={() => setInputMode("amount")}
+              className={`px-3 py-1.5 transition-colors ${inputMode === "amount" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"}`}
+            >£</button>
+          </div>
           <Button type="button" variant="outline" size="sm" onClick={splitEqually} disabled={allocations.length < 2}>
             <Divide className="h-3 w-3 mr-1" /> Equal split
           </Button>
@@ -119,19 +139,35 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-1 w-24">
-              <Input
-                type="number"
-                value={alloc.percentage || ""}
-                onChange={(e) => updateClient(i, "percentage", e.target.value)}
-                className="w-16 text-center bg-background"
-                min="0"
-                max="100"
-                step="0.01"
-              />
-              <span className="text-sm text-muted-foreground">%</span>
-            </div>
-            <span className="text-sm font-medium w-20 text-right">{formatCurrency(alloc.amount)}</span>
+            {inputMode === "percentage" ? (
+              <>
+                <div className="flex items-center gap-1 w-24">
+                  <Input
+                    type="number"
+                    value={alloc.percentage || ""}
+                    onChange={(e) => updateClient(i, "percentage", e.target.value)}
+                    className="w-16 text-center bg-background"
+                    min="0" max="100" step="0.01"
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+                <span className="text-sm font-medium w-20 text-right">{formatCurrency(alloc.amount)}</span>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1 w-28">
+                  <span className="text-sm text-muted-foreground">£</span>
+                  <Input
+                    type="number"
+                    value={alloc.amount || ""}
+                    onChange={(e) => updateClient(i, "amount", e.target.value)}
+                    className="w-20 text-center bg-background"
+                    min="0" step="0.01"
+                  />
+                </div>
+                <span className="text-sm text-muted-foreground w-16 text-right">{alloc.percentage?.toFixed(1)}%</span>
+              </>
+            )}
             {allocations.length > 1 && (
               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => removeClient(i)}>
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -143,8 +179,14 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
 
       {/* Running total */}
       <div className={`flex justify-between text-sm px-3 py-2 rounded-lg ${isValid ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
-        <span>Total: {totalPct.toFixed(1)}% — {formatCurrency(totalAmount)}</span>
-        {!isValid && <span className="font-medium">{(100 - totalPct).toFixed(1)}% remaining</span>}
+        <span>Total: {formatCurrency(totalAmount)} — {totalPct.toFixed(1)}%</span>
+        {!isValid && (
+          <span className="font-medium">
+            {inputMode === "amount" && paidAmount
+              ? `${formatCurrency(paidAmount - totalAmount)} remaining`
+              : `${(100 - totalPct).toFixed(1)}% remaining`}
+          </span>
+        )}
       </div>
     </div>
   );
