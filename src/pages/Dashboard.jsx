@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, CreditCard, Receipt, AlertTriangle, FileX, RefreshCw, Tag, Clock, CheckCircle2, Inbox, Pencil } from "lucide-react";
+import { TrendingUp, CreditCard, Receipt, AlertTriangle, FileX, RefreshCw, Tag, Clock, CheckCircle2, Inbox, Pencil, Eye, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import AnimatedPage from "@/components/AnimatedPage";
@@ -71,8 +71,18 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const [period, setPeriod] = useState("this_month");
   const [editingExpense, setEditingExpense] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
+
+  const approveWithoutReceipt = async (exp, e) => {
+    e.stopPropagation();
+    setApprovingId(exp.id);
+    await base44.entities.Expense.update(exp.id, { receipt_url: "no_receipt_required", status: "confirmed" });
+    queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
+    setApprovingId(null);
+  };
   const heroRef = useRef(null);
   const handleHeroMouseMove = (e) => {
     const el = heroRef.current;
@@ -360,7 +370,22 @@ export default function Dashboard() {
                    <p className="text-sm flex-1 truncate" style={{ color: "var(--text-secondary)" }}>{exp.description}</p>
                    <ExpenseStatusBadge expense={exp} />
                    <span className="text-sm font-semibold tabular-nums flex-shrink-0" style={{ color: "var(--text-primary)" }}>{formatCurrency(exp.paid_amount)}</span>
-                   <Pencil className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: "var(--text-tertiary)" }} />
+                   <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                     {(!exp.receipt_file && !exp.receipt_url) && (
+                       <button
+                         onClick={(e) => approveWithoutReceipt(exp, e)}
+                         title="Approve without receipt"
+                         disabled={approvingId === exp.id}
+                         className="p-1 rounded-lg transition-colors hover:bg-[rgba(61,220,151,0.15)]"
+                       >
+                         {approvingId === exp.id
+                           ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: "#3DDC97" }} />
+                           : <Eye className="h-3.5 w-3.5" style={{ color: "#3DDC97" }} />
+                         }
+                       </button>
+                     )}
+                     <Pencil className="h-3.5 w-3.5" style={{ color: "var(--text-tertiary)" }} />
+                   </div>
                  </motion.div>
                 ))}
               </div>
