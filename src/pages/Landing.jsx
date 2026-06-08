@@ -145,9 +145,9 @@ export default function Landing() {
             </div>
             <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: "Total Spend (May)", value: "£8,420", color: "#7F5BFF" },
-                { label: "Pending Review", value: "3 receipts", color: "#FFB547" },
-                { label: "Reimbursements Due", value: "£1,240", color: "#FF5C7A" },
+                { label: "Total Spend (May)", value: "£6,184", color: "#7F5BFF" },
+                { label: "Pending Review", value: "4 receipts", color: "#FFB547" },
+                { label: "Reimbursements Due", value: "£870", color: "#FF5C7A" },
                 { label: "Drive Synced", value: "100%", color: "#3DDC97" },
               ].map((card) => (
                 <div key={card.label} className="rounded-xl bg-[var(--bg-surface-2)] border border-[var(--border-soft)] p-4">
@@ -158,18 +158,25 @@ export default function Landing() {
             </div>
             <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
               {[
-                { desc: "Train Peterborough → London", code: "R-250523-001", amount: "£52.00", badge: "WCA-CB" },
-                { desc: "Coffee for the office", code: "R-250523-002", amount: "£24.50", badge: "WD-WD1" },
-                { desc: "Taxi to train station", code: "R-250601-001", amount: "£18.00", badge: "WSA-ST" },
+                { desc: "Team lunch — Nando's", code: "R-260601-003", amount: "£74.50", badge: "AJ", badgeColor: "#7F5BFF" },
+                { desc: "Office supplies — Staples", code: "R-260603-007", amount: "£31.20", badge: "SM", badgeColor: "#3DDC97" },
+                { desc: "Train to Birmingham", code: "R-260605-011", amount: "£58.00", badge: "RK", badgeColor: "#FFB547" },
               ].map((row) => (
                 <div key={row.code} className="flex items-center justify-between rounded-xl bg-[var(--bg-elevated)] px-4 py-3">
-                  <div>
-                    <div className="text-sm font-medium text-white truncate max-w-[160px]">{row.desc}</div>
-                    <div className="text-xs text-[var(--text-tertiary)]">{row.code}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ backgroundColor: row.badgeColor + "33", color: row.badgeColor }}>
+                      {row.badge}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-white truncate max-w-[140px]">{row.desc}</div>
+                      <div className="text-xs text-[var(--text-tertiary)]">{row.code}</div>
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-semibold text-white">{row.amount}</div>
-                    <div className="text-xs bg-[rgba(127,91,255,0.15)] text-[#A78BFA] rounded-full px-2 py-0.5">{row.badge}</div>
+                    <div className="text-xs text-[#3DDC97] flex items-center gap-1 justify-end mt-0.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#3DDC97]" /> confirmed
+                    </div>
                   </div>
                 </div>
               ))}
