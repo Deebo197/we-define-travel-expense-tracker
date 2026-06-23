@@ -33,7 +33,7 @@ export default function ReceiptCapture({ onFileUploaded, onOCRComplete, receiptU
     // OCR
     setProcessing(true);
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Extract the following information from this receipt image. Look for the date, the merchant/vendor name or description of what was purchased, and the total amount paid in GBP (£). If you can't find a field, leave it empty string. Return JSON.`,
+      prompt: `Extract the following information from this receipt image. Look for the date (in YYYY-MM-DD format), the merchant/vendor name or description of what was purchased, and the total amount paid in GBP (£). If you can't find a field, leave it as an empty string — do NOT guess or make up a date. Return JSON.`,
       file_urls: [file_url],
       response_json_schema: {
         type: "object",

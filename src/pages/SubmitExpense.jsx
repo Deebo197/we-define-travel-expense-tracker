@@ -98,9 +98,17 @@ export default function SubmitExpense() {
   };
 
   const handleOCR = (data) => {
+    // Only accept OCR date if it's a valid YYYY-MM-DD string; otherwise keep
+    // today's date (the form default) instead of a garbage/random extracted value.
+    const isValidDate = (d) => {
+      if (!d || typeof d !== "string") return false;
+      const parsed = new Date(d);
+      return !isNaN(parsed.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(d);
+    };
+
     setForm(f => ({
       ...f,
-      date: data.date || f.date,
+      date: isValidDate(data.date) ? data.date : f.date,
       description: data.description || f.description,
       paid_amount: data.amount || f.paid_amount,
       actual_cost: data.amount || f.actual_cost,

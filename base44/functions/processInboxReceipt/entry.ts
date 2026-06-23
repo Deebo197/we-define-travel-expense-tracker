@@ -168,7 +168,14 @@ Return only valid JSON with those exact keys.`,
       ocrError = err.message;
     }
 
-    const extractedDate = extracted.date || new Date().toISOString().split('T')[0];
+    // Only accept OCR date if it's a valid YYYY-MM-DD string; otherwise use today.
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isValidDate = (d) => {
+      if (!d || typeof d !== 'string') return false;
+      const parsed = new Date(d);
+      return !isNaN(parsed.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(d);
+    };
+    const extractedDate = isValidDate(extracted.date) ? extracted.date : todayStr;
     const { year, monthFolder } = getMonthFolderName(extractedDate);
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const d = new Date(extractedDate);
