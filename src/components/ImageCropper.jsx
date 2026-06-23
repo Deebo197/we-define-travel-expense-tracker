@@ -160,7 +160,7 @@ const CORNER_COLORS = ["#3b82f6","#3b82f6","#3b82f6","#3b82f6"];
 export default function ImageCropper({ imageSrc, onCropDone, onSkip }) {
   const [status, setStatus] = useState("detecting"); // detecting | ready | confirming
   const [imgSize, setImgSize] = useState({ w: 1, h: 1 }); // natural image size
-  const [displaySize, setDisplaySize] = useState({ w: 1, h: 1 }); // rendered size
+  const [displaySize, setDisplaySize] = useState({ w: 1, h: 1, offsetX: 0, offsetY: 0 }); // rendered image area within element
   const [corners, setCorners] = useState(null); // 4 points in IMAGE pixels
   const containerRef = useRef(null);
   const imgRef = useRef(null);
@@ -179,21 +179,53 @@ export default function ImageCropper({ imageSrc, onCropDone, onSkip }) {
     img.src = imageSrc;
   }, [imageSrc]);
 
-  // Track rendered image display size after layout
+  // Track rendered image display size after layout.
+  // With object-contain, the image is letterboxed inside the element box,
+  // so we must compute the actual rendered image area and its offset —
+  // using clientWidth/clientHeight directly misaligns corner handles and
+  // produces wrong image-pixel coordinates when dragging.
   const updateDisplaySize = useCallback(() => {
-    if (imgRef.current) {
-      setDisplaySize({ w: imgRef.current.clientWidth, h: imgRef.current.clientHeight });
+    if (imgRef.current && imgSize.w > 0 && imgSize.h > 0) {
+      const el = imgRef.current;
+      const elW = el.clientWidth;
+      const elH = el.clientHeight;
+      const imgRatio = imgSize.w / imgSize.h;
+      const elRatio = elW / elH;
+      let w, h, offsetX, offsetY;
+      if (imgRatio > elRatio) {
+        // Image wider than element — constrained by width, letterboxed top/bottom
+        w = elW;
+        h = elW / imgRatio;
+        offsetX = 0;
+        offsetY = (elH - h) / 2;
+      } else {
+        // Image taller than element — constrained by height, letterboxed left/right
+        h = elH;
+        w = elH * imgRatio;
+        offsetX = (elW - w) / 2;
+        offsetY = 0;
+      }
+      setDisplaySize({ w, h, offsetX, offsetY });
     }
-  }, []);
+  }, [imgSize]);
 
-  // Scale helpers: image pixels ↔ display pixels
+  // Recompute when image natural size becomes available or viewport resizes
+  useEffect(() => {
+    updateDisplaySize();
+  }, [imgSize, updateDisplaySize]);
+  useEffect(() => {
+    window.addEventListener("resize", updateDisplaySize);
+    return () => window.removeEventListener("resize", updateDisplaySize);
+  }, [updateDisplaySize]);
+
+  // Scale helpers: image pixels ↔ display pixels (accounting for letterbox offset)
   const toDisplay = (pt) => ({
-    x: (pt.x / imgSize.w) * displaySize.w,
-    y: (pt.y / imgSize.h) * displaySize.h,
+    x: (pt.x / imgSize.w) * displaySize.w + displaySize.offsetX,
+    y: (pt.y / imgSize.h) * displaySize.h + displaySize.offsetY,
   });
   const toImage = (pt) => ({
-    x: Math.round((pt.x / displaySize.w) * imgSize.w),
-    y: Math.round((pt.y / displaySize.h) * imgSize.h),
+    x: Math.round(((pt.x - displaySize.offsetX) / displaySize.w) * imgSize.w),
+    y: Math.round(((pt.y - displaySize.offsetY) / displaySize.h) * imgSize.h),
   });
 
   // Drag handling
