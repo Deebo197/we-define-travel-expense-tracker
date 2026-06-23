@@ -76,7 +76,7 @@ export default function MyExpenses() {
   const [viewingCode, setViewingCode] = useState(null);
 
   // Determine the primary code for display (personal code like DJ, CB, ST)
-  const targetCode = isAdmin && viewingCode ? viewingCode : user?.paid_by_code || null;
+  const targetCode = isAdmin && viewingCode ? viewingCode : user?.paid_by_code_personal || null;
   const targetPerson = targetCode ? PERSON_AVATARS[targetCode] : null;
 
   // All codes (personal + Amex) for the person being viewed

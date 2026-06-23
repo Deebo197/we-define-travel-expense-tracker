@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import AnimatedPage from "@/components/AnimatedPage";
 import { base44 } from "@/api/base44Client";
@@ -20,6 +20,7 @@ import CurrencySelector from "../components/CurrencySelector";
 import { generateReceiptCode } from "@/lib/receiptCodeGenerator";
 
 export default function SubmitExpense() {
+  const queryClient = useQueryClient();
   const urlParams = new URLSearchParams(window.location.search);
   const draftId = urlParams.get('draft_id') || null;
 
@@ -184,6 +185,8 @@ export default function SubmitExpense() {
       } else {
         await base44.entities.Expense.create(expense);
       }
+      queryClient.invalidateQueries({ queryKey: ["myExpenses"] });
+      queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
       setSuccess(receiptCode);
     } catch (err) {
       toast.error(err.message || "Failed to submit expense. Please try again.");
