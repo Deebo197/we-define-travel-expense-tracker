@@ -56,7 +56,7 @@ export default function ClientReport() {
         return {
           ...m,
           clientAmount: alloc?.amount || m.total_cost,
-          description: `Mileage: ${m.purpose} (${m.stops?.map(s => s.postcode).join(" → ")})`,
+          description: `Mileage: ${m.purpose} (${m.stops?.map(s => s.postcode).join(" > ")})`,
           paid_amount: m.total_cost,
           type: "mileage",
           effectiveDate: m.date,
@@ -115,8 +115,15 @@ export default function ClientReport() {
         reader.onload = () => resolve(reader.result);
         reader.readAsDataURL(logoBlob);
       });
-      // Draw logo: 40mm wide, proportional height (~14mm for this logo)
-      pdf.addImage(logoDataUrl, "JPEG", margin, y, 40, 14);
+      // Measure natural dimensions to preserve aspect ratio
+      const logoImg = await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = logoDataUrl;
+      });
+      const logoW = 38;
+      const logoH = (logoImg.naturalHeight / logoImg.naturalWidth) * logoW;
+      pdf.addImage(logoDataUrl, "JPEG", margin, y, logoW, logoH);
     } catch (e) {
       // If logo fails to load, just skip it silently
     }
