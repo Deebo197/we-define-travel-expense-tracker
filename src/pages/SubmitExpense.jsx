@@ -142,11 +142,12 @@ export default function SubmitExpense() {
   const primaryClient = form.client_allocations[0]?.client_code;
   const categories = primaryClient ? getCategoriesForClient(primaryClient) : [];
 
-  const totalPct = form.client_allocations.reduce((s, a) => s + (a.percentage || 0), 0);
+  const totalAllocated = form.client_allocations.reduce((s, a) => s + (a.amount || 0), 0);
+  const paidAmt = parseFloat(form.paid_amount) || 0;
   const canSubmit = form.date && form.description && form.paid_amount && form.paid_by
     && form.client_allocations.length > 0
     && form.client_allocations.every(a => a.client_code)
-    && Math.abs(totalPct - 100) < 0.01;
+    && Math.abs(totalAllocated - paidAmt) < 0.01;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

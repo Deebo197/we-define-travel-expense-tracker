@@ -20,16 +20,23 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
     }
   };
 
+  // Distribute a total amount equally across `count` slots, with the last slot
+  // absorbing any rounding remainder so amounts AND percentages always sum exactly.
+  const distributeEqually = (count, total) => {
+    if (count === 0) return [];
+    const baseAmount = Math.floor((total / count) * 100) / 100;
+    const basePct = total ? Math.round((baseAmount / total * 100) * 100) / 100 : Math.round((100 / count) * 100) / 100;
+    return Array.from({ length: count }, (_, i) => {
+      const amt = i === count - 1 ? Math.round((total - baseAmount * (count - 1)) * 100) / 100 : baseAmount;
+      const pct = i === count - 1 ? Math.round((100 - basePct * (count - 1)) * 100) / 100 : basePct;
+      return { amount: amt, percentage: pct };
+    });
+  };
+
   const addClient = () => {
     const updated = [...allocations, { client_code: "", client_name: "", percentage: 0, amount: 0 }];
-    // Auto-distribute equally so totals always sum to 100%
-    const count = updated.length;
-    const pct = Math.round((100 / count) * 100) / 100;
-    updated.forEach((a, i) => {
-      const actualPct = i === count - 1 ? 100 - (pct * (count - 1)) : pct;
-      a.percentage = actualPct;
-      a.amount = Math.round(((paidAmount || 0) * actualPct / 100) * 100) / 100;
-    });
+    const dist = distributeEqually(updated.length, paidAmount || 0);
+    updated.forEach((a, i) => { a.percentage = dist[i].percentage; a.amount = dist[i].amount; });
     onChange(updated);
   };
 
@@ -57,19 +64,15 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
   const splitEqually = () => {
     const count = allocations.length;
     if (count === 0) return;
-    const pct = Math.round((100 / count) * 100) / 100;
-    const updated = allocations.map((a, i) => {
-      const actualPct = i === count - 1 ? 100 - (pct * (count - 1)) : pct;
-      return { ...a, percentage: actualPct, amount: Math.round(((paidAmount || 0) * actualPct / 100) * 100) / 100 };
-    });
-    onChange(updated);
+    const dist = distributeEqually(count, paidAmount || 0);
+    onChange(allocations.map((a, i) => ({ ...a, ...dist[i] })));
   };
 
   const totalPct = allocations.reduce((sum, a) => sum + (a.percentage || 0), 0);
   const totalAmount = allocations.reduce((sum, a) => sum + (a.amount || 0), 0);
-  const isValid = inputMode === "percentage"
-    ? Math.abs(totalPct - 100) < 0.01
-    : paidAmount ? Math.abs(totalAmount - paidAmount) < 0.01 : Math.abs(totalPct - 100) < 0.01;
+  const isValid = paidAmount
+    ? Math.abs(totalAmount - paidAmount) < 0.01
+    : Math.abs(totalPct - 100) < 0.01;
 
   // Single client mode
   if (!splitMode) {
