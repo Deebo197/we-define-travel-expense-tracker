@@ -105,23 +105,39 @@ export default function ClientReport() {
     };
 
     // ── Header ──────────────────────────────────────────────────────────
-    pdf.setFontSize(16).setFont(undefined, "bold");
-    pdf.text("EXPENSE BREAKDOWN SUMMARY", pageW - margin, y, { align: "right" });
-    pdf.setFontSize(10).setFont(undefined, "normal").setTextColor(100);
-    y += 6;
-    pdf.text(`Prepared for: ${clientName}`, pageW - margin, y, { align: "right" });
-    y += 5;
-    pdf.text(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }), pageW - margin, y, { align: "right" });
+    // Load logo and draw it
+    const logoUrl = "https://media.base44.com/images/public/69d4e29f22a8078c11a10f41/5a122ba74_wdt-logo-v1-logo-full-colour-rgb.jpg";
+    try {
+      const logoResp = await fetch(logoUrl);
+      const logoBlob = await logoResp.blob();
+      const logoDataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(logoBlob);
+      });
+      // Draw logo: 40mm wide, proportional height (~14mm for this logo)
+      pdf.addImage(logoDataUrl, "JPEG", margin, y, 40, 14);
+    } catch (e) {
+      // If logo fails to load, just skip it silently
+    }
 
-    y += 10;
+    pdf.setFontSize(16).setFont("helvetica", "bold").setTextColor(45, 45, 45);
+    pdf.text("EXPENSE BREAKDOWN SUMMARY", pageW - margin, y + 5, { align: "right" });
+    pdf.setFontSize(10).setFont("helvetica", "normal").setTextColor(100);
+    y += 11;
+    pdf.text(`Prepared for: ${clientName}`, pageW - margin, y + 5, { align: "right" });
+    y += 5;
+    pdf.text(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }), pageW - margin, y + 5, { align: "right" });
+
+    y += 14;
     pdf.setDrawColor(200).line(margin, y, pageW - margin, y);
     y += 8;
 
     // ── TO block ────────────────────────────────────────────────────────
-    pdf.setFontSize(11).setFont(undefined, "bold").setTextColor(200, 16, 46);
+    pdf.setFontSize(11).setFont("helvetica", "bold").setTextColor(200, 16, 46);
     pdf.text(`TO: ${clientName}`, margin, y);
     y += 6;
-    pdf.setFontSize(8.5).setFont(undefined, "normal").setTextColor(80);
+    pdf.setFontSize(8.5).setFont("helvetica", "normal").setTextColor(80);
     const intro = `Please find below a full itemised breakdown of all expenses charged to ${clientName} by We Define Travel for the period ${dateRange}. All amounts are in GBP (£).`;
     const introLines = pdf.splitTextToSize(intro, usableW);
     pdf.text(introLines, margin, y);
@@ -159,8 +175,8 @@ export default function ClientReport() {
           pdf.setFillColor(250, 250, 250).rect(margin, y, usableW, rowH, "F");
         }
 
-        pdf.setFontSize(8).setFont(undefined, "normal").setTextColor(40);
-        pdf.text(formatDateUK(item.date), cols.date + 1, y + 5);
+        pdf.setFontSize(8).setFont("helvetica", "normal").setTextColor(40);
+        pdf.text(formatDateUK(item.effectiveDate || item.date), cols.date + 1, y + 5);
 
         const descText = pdf.splitTextToSize(item.description || "", cols.receipt - cols.desc - 4);
         pdf.text(descText[0], cols.desc + 1, y + 5); // single line in table
@@ -174,16 +190,16 @@ export default function ClientReport() {
           : (item.receipt_code || "");
 
         if (receiptUrl && receiptLabel) {
-          pdf.setTextColor(200, 16, 46).setFont(undefined, "normal");
+          pdf.setTextColor(200, 16, 46).setFont("helvetica", "normal");
           pdf.text(receiptLabel, cols.receipt + 1, y + 5);
           const linkW = pdf.getTextWidth(receiptLabel);
           pdf.link(cols.receipt + 1, y + 1, linkW, 5, { url: receiptUrl });
         } else if (receiptLabel) {
-          pdf.setTextColor(150).setFont(undefined, "normal");
+          pdf.setTextColor(150).setFont("helvetica", "normal");
           pdf.text(receiptLabel, cols.receipt + 1, y + 5);
         }
 
-        pdf.setTextColor(40).setFont(undefined, "normal");
+        pdf.setTextColor(40).setFont("helvetica", "normal");
         pdf.text(formatCurrency(item.paid_amount), pageW - margin - (usableW - (cols.split - margin)) - 2, y + 5, { align: "right" });
         pdf.text(formatCurrency(item.clientAmount), pageW - margin - 2, y + 5, { align: "right" });
 
@@ -215,14 +231,14 @@ export default function ClientReport() {
     checkPage(24);
     pdf.setDrawColor(200).line(margin, y, pageW - margin, y);
     y += 6;
-    pdf.setFontSize(8).setFont(undefined, "italic").setTextColor(120);
+    pdf.setFontSize(8).setFont("helvetica", "italic").setTextColor(120);
     pdf.text("All amounts shown are Zero Rated for VAT purposes. No VAT is applicable on these expenses.", margin, y);
     y += 6;
-    pdf.setFont(undefined, "normal");
+    pdf.setFont("helvetica", "normal");
     pdf.text("Warm regards,", margin, y); y += 5;
-    pdf.setFont(undefined, "bold").setTextColor(60);
+    pdf.setFont("helvetica", "bold").setTextColor(60);
     pdf.text(COMPANY_INFO.director, margin, y); y += 4;
-    pdf.setFont(undefined, "normal").setTextColor(120);
+    pdf.setFont("helvetica", "normal").setTextColor(120);
     pdf.text(`Director, ${COMPANY_INFO.name}`, margin, y); y += 4;
     pdf.text(COMPANY_INFO.directorEmail, margin, y); y += 10;
     pdf.setFontSize(7.5).setTextColor(160);
@@ -363,13 +379,13 @@ export default function ClientReport() {
                     </span>
                     <span>
                       {item.type === "mileage" && item.route_image_url ? (
-                        <a href={item.route_image_url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs" title="View route map">{item.route_image_code || "Map"}</a>
+                        <a href={item.route_image_url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline text-xs" title="View route map">{item.route_image_code || "Map"}</a>
                       ) : (() => {
                         const url = item.receipt_files?.[0]?.public_receipt_url || item.primary_receipt_file_url || item.receipt_url || item.receipt_files?.[0]?.file_url || item.receipt_file;
                         return url ? (
-                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline font-mono text-xs">{item.receipt_code}</a>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-[#C8102E] hover:underline text-xs">{item.receipt_code}</a>
                         ) : (
-                          <span className="text-gray-400 font-mono text-xs">{item.receipt_code}</span>
+                          <span className="text-gray-400 text-xs">{item.receipt_code}</span>
                         );
                       })()}
                     </span>
