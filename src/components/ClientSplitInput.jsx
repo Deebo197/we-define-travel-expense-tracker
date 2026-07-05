@@ -21,7 +21,16 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
   };
 
   const addClient = () => {
-    onChange([...allocations, { client_code: "", client_name: "", percentage: 0, amount: 0 }]);
+    const updated = [...allocations, { client_code: "", client_name: "", percentage: 0, amount: 0 }];
+    // Auto-distribute equally so totals always sum to 100%
+    const count = updated.length;
+    const pct = Math.round((100 / count) * 100) / 100;
+    updated.forEach((a, i) => {
+      const actualPct = i === count - 1 ? 100 - (pct * (count - 1)) : pct;
+      a.percentage = actualPct;
+      a.amount = Math.round(((paidAmount || 0) * actualPct / 100) * 100) / 100;
+    });
+    onChange(updated);
   };
 
   const removeClient = (index) => {
