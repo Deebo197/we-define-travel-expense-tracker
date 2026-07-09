@@ -34,6 +34,11 @@ export default function AccountantExport() {
     queryFn: () => base44.entities.MileageJourney.list("-date", 1000),
   });
 
+  const { data: allPayments = [] } = useQuery({
+    queryKey: ["cardPayments"],
+    queryFn: () => base44.entities.BankTransaction.filter({ status: "payment" }),
+  });
+
   // Chronologically sorted, date-filtered expenses
   const filtered = useMemo(() => {
     let exps = [...allExpenses];
@@ -62,6 +67,20 @@ export default function AccountantExport() {
     return miles.sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [allMileage, dateFrom, dateTo]);
 
+  // Chronologically sorted, date-filtered card payments
+  const filteredPayments = useMemo(() => {
+    let pays = [...allPayments];
+    if (dateFrom && dateTo) {
+      const from = new Date(dateFrom);
+      const to = new Date(dateTo);
+      pays = pays.filter(t => {
+        const d = new Date(t.transaction_date);
+        return d >= from && d <= to;
+      });
+    }
+    return pays.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+  }, [allPayments, dateFrom, dateTo]);
+
   // Group expenses by month
   const groupedByMonth = useMemo(() => {
     const map = {};
@@ -87,6 +106,7 @@ export default function AccountantExport() {
   const overallTotal = filtered.reduce((s, e) => s + (e.paid_amount || 0), 0);
   const totalMileageCost = filteredMileage.reduce((s, m) => s + (m.total_cost || 0), 0);
   const totalMiles = filteredMileage.reduce((s, m) => s + (m.total_miles || 0), 0);
+  const totalPayments = filteredPayments.reduce((s, t) => s + (t.amount || 0), 0);
   const dateRange = dateFrom && dateTo ? `${formatDateUK(dateFrom)} — ${formatDateUK(dateTo)}` : "All dates";
 
   const journeyDescription = (m) => {
@@ -138,6 +158,15 @@ export default function AccountantExport() {
       m.year || "",
     ]);
 
+    // Card payment rows
+    const payRows = filteredPayments.map(t => [
+      "Card Payment",
+      formatDateUK(t.transaction_date),
+      t.account_source || "",
+      `"${(t.description || "").replace(/"/g, '""')}"`,
+      t.amount || "",
+    ]);
+
     const csv = [
       "EXPENSES",
       expHeaders.join(","),
@@ -146,6 +175,10 @@ export default function AccountantExport() {
       "MILEAGE",
       mileHeaders.join(","),
       ...mileRows.map(r => r.join(",")),
+      "",
+      "CARD PAYMENTS",
+      ["Type","Date","Source","Description","Amount"].join(","),
+      ...payRows.map(r => r.join(",")),
     ].join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
@@ -364,6 +397,43 @@ export default function AccountantExport() {
         y += 14;
       }
 
+      // ── SECTION 3: CARD PAYMENTS ────────────────────────────────────────
+      if (filteredPayments.length > 0) {
+        checkPage(16);
+        pdf.setFontSize(11).setFont("helvetica", "bold").setTextColor(200, 16, 46);
+        pdf.text("SECTION 3 — CARD PAYMENTS", margin, y);
+        y += 8;
+
+        pdf.setFillColor(245, 245, 245).rect(margin, y, usableW, 6, "F");
+        pdf.setFontSize(7).setFont("helvetica", "bold").setTextColor(100);
+        pdf.text("Date", margin + 1, y + 4.5);
+        pdf.text("Source", margin + 25, y + 4.5);
+        pdf.text("Description", margin + 55, y + 4.5);
+        pdf.text("Amount", pageW - margin - 1, y + 4.5, { align: "right" });
+        y += 6;
+
+        filteredPayments.forEach((t, i) => {
+          checkPage(7);
+          if (i % 2 === 1) pdf.setFillColor(250, 250, 250).rect(margin, y, usableW, 7, "F");
+          pdf.setFontSize(7.5).setFont("helvetica", "normal").setTextColor(40);
+          pdf.text(formatDateUK(t.transaction_date), margin + 1, y + 5);
+          pdf.text(t.account_source || "—", margin + 25, y + 5);
+          pdf.text(pdf.splitTextToSize(t.description || "", pageW - margin - 55 - 40)[0], margin + 55, y + 5);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(formatCurrency(t.amount), pageW - margin - 1, y + 5, { align: "right" });
+          pdf.setFont("helvetica", "normal");
+          pdf.setDrawColor(230).line(margin, y + 7, pageW - margin, y + 7);
+          y += 7;
+        });
+
+        checkPage(8);
+        pdf.setFillColor(200, 16, 46).rect(margin, y, usableW, 7, "F");
+        pdf.setFontSize(8).setFont("helvetica", "bold").setTextColor(255);
+        pdf.text("PAYMENTS TOTAL", margin + 2, y + 5);
+        pdf.text(formatCurrency(totalPayments), pageW - margin - 2, y + 5, { align: "right" });
+        y += 14;
+      }
+
       // ── Grand total ──────────────────────────────────────────────────────
       checkPage(10);
       pdf.setFillColor(45, 45, 45).rect(margin, y, usableW, 8, "F");
@@ -401,7 +471,7 @@ export default function AccountantExport() {
             <Label className="text-sm">To</Label>
             <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setShowPreview(false); }} className="mt-1 w-40" />
           </div>
-          <span className="text-sm text-muted-foreground">{filtered.length} expenses · {filteredMileage.length} journeys</span>
+          <span className="text-sm text-muted-foreground">{filtered.length} expenses · {filteredMileage.length} journeys · {filteredPayments.length} payments</span>
           <Button onClick={() => setShowPreview(true)} disabled={filtered.length === 0 && filteredMileage.length === 0} className="gap-1.5">
             <Eye className="h-4 w-4" /> Preview
           </Button>
@@ -412,7 +482,7 @@ export default function AccountantExport() {
         <div className="bg-white text-black rounded-xl border border-border overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
           {/* Toolbar */}
           <div className="flex items-center justify-between px-6 py-4 bg-card border-b border-border">
-            <span className="font-semibold text-foreground">Preview — {filtered.length} expenses · {filteredMileage.length} mileage journeys · {dateRange}</span>
+            <span className="font-semibold text-foreground">Preview — {filtered.length} expenses · {filteredMileage.length} journeys · {filteredPayments.length} payments · {dateRange}</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCSVExport} disabled={generatingCSV} className="gap-1.5">
                 {generatingCSV ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
@@ -547,6 +617,33 @@ export default function AccountantExport() {
                 <div className="flex justify-between px-3 py-3 bg-[#2D2D2D] text-white font-bold rounded mb-8">
                   <span>MILEAGE TOTAL</span>
                   <span>{totalMiles.toFixed(1)} miles · <span className="text-lg">{formatCurrency(totalMileageCost)}</span></span>
+                </div>
+              </>
+            )}
+
+            {/* ── SECTION 3: CARD PAYMENTS ── */}
+            {filteredPayments.length > 0 && (
+              <>
+                <h3 className="text-base font-bold text-[#C8102E] mb-3 mt-2">Section 3 — Card Payments</h3>
+                <div className="mb-6">
+                  <div className="grid px-3 py-1.5 text-xs font-semibold text-gray-500 border-b border-gray-200 bg-gray-50"
+                    style={{ gridTemplateColumns: "80px 80px 1fr 100px" }}>
+                    <span>Date</span><span>Source</span><span>Description</span><span className="text-right">Amount</span>
+                  </div>
+                  {filteredPayments.map((t, i) => (
+                    <div key={t.id} className={`grid px-3 py-2 text-xs border-b border-gray-100 items-center ${i % 2 === 1 ? "bg-[#F5F5F5]" : ""}`}
+                      style={{ gridTemplateColumns: "80px 80px 1fr 100px" }}>
+                      <span className="text-gray-600">{formatDateUK(t.transaction_date)}</span>
+                      <span className="text-gray-500">{t.account_source}</span>
+                      <span className="font-medium pr-2">{t.description}</span>
+                      <span className="text-right font-semibold">{formatCurrency(t.amount)}</span>
+                    </div>
+                  ))}
+                  <div className="grid px-3 py-2 bg-[#C8102E] text-white text-sm font-bold rounded-b"
+                    style={{ gridTemplateColumns: "80px 80px 1fr 100px" }}>
+                    <span className="col-span-3 text-right pr-3">PAYMENTS TOTAL</span>
+                    <span className="text-right">{formatCurrency(totalPayments)}</span>
+                  </div>
                 </div>
               </>
             )}

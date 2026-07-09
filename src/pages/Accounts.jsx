@@ -15,6 +15,7 @@ import { Loader2, Upload, Download, FileText, AlertCircle } from "lucide-react";
 import { formatCurrency, formatDateUK, CLIENT_CODES, PAID_BY_CODES, COMPANY_INFO, getClientName, formatMonth, getCategoriesForClient, ALL_CATEGORIES, CLIENT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
 import AccountantExport from "../components/AccountantExport";
+import CardPaymentsTable from "../components/CardPaymentsTable";
 import DuplicateDetector from "../components/DuplicateDetector";
 import PersonAvatar from '../components/PersonAvatar';
 
@@ -168,7 +169,7 @@ ${csvText}`,
           transaction_date: txn.date,
           description: txn.description,
           amount: Math.abs(txn.amount),
-          status: isCardPayment ? "ignored" : (autoProcessed ? "allocated" : "pending"),
+          status: isCardPayment ? "payment" : (autoProcessed ? "allocated" : "pending"),
           auto_processed: autoProcessed || isCardPayment,
         };
 
@@ -203,7 +204,7 @@ ${csvText}`,
 
       queryClient.invalidateQueries({ queryKey: ["bankTransactions"] });
       queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
-      const paymentNote = paymentCount > 0 ? ` (${paymentCount} card payment(s) auto-ignored)` : "";
+      const paymentNote = paymentCount > 0 ? ` (${paymentCount} card payment(s) logged)` : "";
       setImportMessage({ type: "success", text: `Successfully imported ${txns.length} transaction(s).${paymentNote}` });
     }
 
@@ -269,6 +270,7 @@ ${csvText}`,
     allocated: transactions.filter(t => t.status === "allocated").length,
     expense_submitted: transactions.filter(t => t.status === "expense_submitted").length,
     ignored: transactions.filter(t => t.status === "ignored").length,
+    payment: transactions.filter(t => t.status === "payment").length,
   }), [transactions]);
 
   const pendingAmount = transactions.filter(t => t.status === "pending").reduce((s, t) => s + (t.amount || 0), 0);
@@ -339,10 +341,14 @@ ${csvText}`,
           <TabsTrigger value="allocated">Allocated ({counts.allocated})</TabsTrigger>
           <TabsTrigger value="expense_submitted">Submitted ({counts.expense_submitted})</TabsTrigger>
           <TabsTrigger value="ignored">Ignored ({counts.ignored})</TabsTrigger>
+          <TabsTrigger value="payment">Payments ({counts.payment})</TabsTrigger>
           <TabsTrigger value="all">All</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
+          {tab === "payment" ? (
+            <CardPaymentsTable transactions={filteredTxns} />
+          ) : (
           <div className="bg-card rounded-xl border border-border overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -517,6 +523,7 @@ ${csvText}`,
               <div className="py-12 text-center text-muted-foreground text-sm">No transactions</div>
             )}
           </div>
+          )}
         </TabsContent>
       </Tabs>
 

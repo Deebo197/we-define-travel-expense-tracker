@@ -30,7 +30,8 @@
         "pending",
         "allocated",
         "expense_submitted",
-        "ignored"
+        "ignored",
+        "payment"
       ],
       "default": "pending"
     },
