@@ -151,9 +151,14 @@ ${csvText}`,
       }
       txns = validTxns;
 
+      let paymentCount = 0;
       for (const txn of txns) {
         // Apply saved alias if exists
         if (descAliases[txn.description]) txn.description = descAliases[txn.description];
+
+        // Detect credit card payments (e.g. "Payment Received Thank You") — not expenses
+        const isCardPayment = /payment received|card payment|payment thank you|direct debit payment/i.test(txn.description);
+
         const isWD = /we define|wedefine|wdt/i.test(txn.description);
         const isWD1 = /margin|wd1/i.test(txn.description);
         const autoProcessed = isWD || isWD1;
@@ -163,11 +168,16 @@ ${csvText}`,
           transaction_date: txn.date,
           description: txn.description,
           amount: Math.abs(txn.amount),
-          status: autoProcessed ? "allocated" : "pending",
-          auto_processed: autoProcessed,
+          status: isCardPayment ? "ignored" : (autoProcessed ? "allocated" : "pending"),
+          auto_processed: autoProcessed || isCardPayment,
         };
 
         const created = await base44.entities.BankTransaction.create(record);
+
+        if (isCardPayment) {
+          paymentCount++;
+          continue;
+        }
 
         if (autoProcessed) {
           const clientCode = isWD1 ? "WD1" : "WD";
@@ -193,7 +203,8 @@ ${csvText}`,
 
       queryClient.invalidateQueries({ queryKey: ["bankTransactions"] });
       queryClient.invalidateQueries({ queryKey: ["allExpenses"] });
-      setImportMessage({ type: "success", text: `Successfully imported ${txns.length} transaction(s).` });
+      const paymentNote = paymentCount > 0 ? ` (${paymentCount} card payment(s) auto-ignored)` : "";
+      setImportMessage({ type: "success", text: `Successfully imported ${txns.length} transaction(s).${paymentNote}` });
     }
 
     setImporting(false);
