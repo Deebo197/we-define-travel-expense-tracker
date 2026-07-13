@@ -218,9 +218,14 @@ ${csvText}`,
       const { paid_by, category } = getRowState(txn);
       const allocations = getRowAllocations(txn);
       const receipt = rowReceipts[txn.id];
+      // Use the in-flight edited description if the user just edited it,
+      // otherwise fall back to the query-cached description (or its saved alias)
+      const description = editingDesc[txn.id] !== undefined
+        ? editingDesc[txn.id]
+        : (descAliases[txn.description] || txn.description);
       await base44.entities.Expense.create({
         date: txn.transaction_date,
-        description: txn.description,
+        description,
         paid_amount: txn.amount,
         actual_cost: txn.amount,
         vat: getRowState(txn).vat || false,
@@ -238,16 +243,16 @@ ${csvText}`,
         submitted_by_name: "Bank Import",
         source: "csv_import",
       });
-      await base44.entities.BankTransaction.update(txn.id, { status: "expense_submitted" });
+      await base44.entities.BankTransaction.update(txn.id, { status: "expense_submitted", description });
       // Remember category for this description
       if (category) {
-        const updatedCats = { ...catAliases, [txn.description]: category };
+        const updatedCats = { ...catAliases, [description]: category };
         setCatAliases(updatedCats);
         localStorage.setItem("wdt_cat_aliases", JSON.stringify(updatedCats));
       }
       // Remember VAT for this description
       const vat = getRowState(txn).vat || false;
-      const updatedVats = { ...vatAliases, [txn.description]: vat };
+      const updatedVats = { ...vatAliases, [description]: vat };
       setVatAliases(updatedVats);
       localStorage.setItem("wdt_vat_aliases", JSON.stringify(updatedVats));
     },
