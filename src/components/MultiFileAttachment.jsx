@@ -3,7 +3,7 @@
  * Displays chips for each uploaded file, allows marking one as Primary,
  * removing files, and triggers OCR on the primary file.
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
 import {
@@ -100,8 +100,20 @@ export default function MultiFileAttachment({ files, onChange, onOCRComplete }) 
   const [ocrRunning, setOCRRunning] = useState(false);
   const [cropSrc, setCropSrc] = useState(null);
   const [pendingCropFile, setPendingCropFile] = useState(null);
+  const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  // Prevent the browser from opening files dropped anywhere on the page
+  useEffect(() => {
+    const preventDefault = (e) => e.preventDefault();
+    window.addEventListener("dragover", preventDefault);
+    window.addEventListener("drop", preventDefault);
+    return () => {
+      window.removeEventListener("dragover", preventDefault);
+      window.removeEventListener("drop", preventDefault);
+    };
+  }, []);
 
   const runOCR = async (fileUrl) => {
     if (!fileUrl) return;
@@ -249,8 +261,20 @@ export default function MultiFileAttachment({ files, onChange, onOCRComplete }) 
       {/* Upload zone */}
       {files.length === 0 ? (
         <div
-          className="border-2 border-dashed rounded-xl p-6 text-center"
-          style={{ borderColor: "var(--border-strong)", backgroundColor: "rgba(127,91,255,0.03)" }}
+          className="border-2 border-dashed rounded-xl p-6 text-center transition-colors"
+          style={{
+            borderColor: dragging ? "#7F5BFF" : "var(--border-strong)",
+            backgroundColor: dragging ? "rgba(127,91,255,0.1)" : "rgba(127,91,255,0.03)",
+          }}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(true); }}
+          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(false); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleFileInput(file);
+          }}
         >
           <div className="flex flex-col items-center gap-3">
             <div
@@ -264,7 +288,7 @@ export default function MultiFileAttachment({ files, onChange, onOCRComplete }) 
                 Capture or upload receipt
               </p>
               <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                Take a photo or upload an image/PDF. First file becomes Primary.
+                Drag &amp; drop, take a photo, or upload an image/PDF. First file becomes Primary.
               </p>
             </div>
             <div className="flex gap-2">
@@ -285,9 +309,19 @@ export default function MultiFileAttachment({ files, onChange, onOCRComplete }) 
           disabled={uploading || ocrRunning}
           className="w-full flex items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-medium transition-all"
           style={{
-            backgroundColor: "var(--bg-surface-2)",
+            backgroundColor: dragging ? "rgba(127,91,255,0.1)" : "var(--bg-surface-2)",
             border: "1px dashed var(--border-strong)",
+            borderColor: dragging ? "#7F5BFF" : undefined,
             color: "var(--text-tertiary)",
+          }}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(true); }}
+          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(false); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleFileInput(file);
           }}
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#7F5BFF" }} /> : <Plus className="h-4 w-4" />}
