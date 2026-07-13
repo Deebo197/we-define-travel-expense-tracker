@@ -295,6 +295,15 @@ export default function AllExpenses() {
                         <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
                       </span>
                     )}
+                    <button
+                      type="button"
+                      title="Edit expense"
+                      onClick={(e) => { e.stopPropagation(); setEditExpense(exp); }}
+                      className="p-1 rounded-lg transition-colors hover:bg-[rgba(127,91,255,0.12)]"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </td>
               </motion.tr>
@@ -312,6 +321,11 @@ export default function AllExpenses() {
           <DialogHeader>
             <DialogTitle>Expense Detail</DialogTitle>
           </DialogHeader>
+          {selected && (
+            <Button size="sm" className="mb-2" onClick={() => { setEditExpense(selected); setSelected(null); }}>
+              <Pencil className="h-4 w-4 mr-1" /> Edit this expense
+            </Button>
+          )}
           {selected && (
           <div className="space-y-4 text-sm">
           <div className="grid grid-cols-2 gap-3">
