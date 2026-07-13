@@ -9,6 +9,7 @@ export default function ReceiptCapture({ onFileUploaded, onOCRComplete, receiptU
   const [processing, setProcessing] = useState(false);
   const [preview, setPreview] = useState(receiptUrl || null);
   const [cropSrc, setCropSrc] = useState(null);
+  const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -86,14 +87,24 @@ export default function ReceiptCapture({ onFileUploaded, onOCRComplete, receiptU
       {cropSrc ? (
         <ImageCropper imageSrc={cropSrc} onCropDone={handleCropDone} onSkip={handleSkipCrop} />
       ) : !preview ? (
-        <div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-muted/30">
+        <div
+          className={`border-2 border-dashed rounded-xl p-6 text-center bg-muted/30 transition-colors ${dragging ? "border-primary bg-primary/10" : "border-border"}`}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleFile(file);
+          }}
+        >
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
               <Camera className="h-6 w-6 text-primary" />
             </div>
             <div>
               <p className="text-sm font-medium">Capture or upload receipt</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Take a photo or upload an image/PDF</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Drag &amp; drop, take a photo, or upload an image/PDF</p>
             </div>
             <div className="flex gap-2">
               <Button
