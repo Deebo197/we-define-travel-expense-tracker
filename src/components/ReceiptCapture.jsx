@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, Loader2, FileText, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -12,6 +12,17 @@ export default function ReceiptCapture({ onFileUploaded, onOCRComplete, receiptU
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  // Prevent the browser from opening files dropped anywhere on the page
+  useEffect(() => {
+    const preventDefault = (e) => e.preventDefault();
+    window.addEventListener("dragover", preventDefault);
+    window.addEventListener("drop", preventDefault);
+    return () => {
+      window.removeEventListener("dragover", preventDefault);
+      window.removeEventListener("drop", preventDefault);
+    };
+  }, []);
 
   const processFile = async (file) => {
     if (!file) return;
