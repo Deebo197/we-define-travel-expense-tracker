@@ -191,14 +191,17 @@ export default function Reimbursements() {
                         </p>
                       </div>
                       <span className="text-sm font-semibold whitespace-nowrap">{formatCurrency(item.paid_amount)}</span>
-                      <Switch
-                        checked={!!item.reimbursement_paid}
-                        onCheckedChange={(v) => togglePaid.mutate({
-                          type: item.type === "Expense" ? "expense" : "mileage",
-                          id: item.id,
-                          paid: v,
-                        })}
-                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">Paid</span>
+                        <Switch
+                          checked={!!item.reimbursement_paid}
+                          onCheckedChange={(v) => togglePaid.mutate({
+                            type: item.type === "Expense" ? "expense" : "mileage",
+                            id: item.id,
+                            paid: v,
+                          })}
+                        />
+                        </div>
                     </div>
                   ))}
                 </div>
