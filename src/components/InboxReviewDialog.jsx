@@ -19,7 +19,10 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
   const [confirming, setConfirming] = useState(false);
   const [localItem, setLocalItem] = useState(item);
 
-  useEffect(() => { setLocalItem(item); }, [item]);
+  useEffect(() => {
+    setLocalItem(item);
+    setConfirming(false);
+  }, [item]);
 
   useEffect(() => {
     if (item) {
@@ -85,6 +88,7 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
       } else {
         toast.success(`${item.receipt_code} confirmed as an expense`);
       }
+      setConfirming(false);
       onConfirmed();
       onClose();
     } catch (err) {
@@ -92,6 +96,7 @@ export default function InboxReviewDialog({ item, open, onClose, onConfirmed }) 
       // 409 = another request is already confirming — treat as success in flight
       if (err?.response?.status === 409) {
         toast.info("Already being confirmed — please refresh in a moment");
+        setConfirming(false);
         onClose();
       } else {
         toast.error(msg);
