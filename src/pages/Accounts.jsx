@@ -286,7 +286,9 @@ ${csvText}`,
     const latest = (source) => {
       const items = transactions.filter(t => t.account_source === source && t.transaction_date);
       if (!items.length) return null;
-      return items.reduce((a, b) => (a.transaction_date > b.transaction_date ? a : b)).transaction_date;
+      return items.reduce((a, b) =>
+        (a.transaction_date > b.transaction_date || (a.transaction_date === b.transaction_date && a.created_date > b.created_date)) ? a : b
+      );
     };
     return { Barclays: latest("Barclays"), Amex: latest("Amex") };
   }, [transactions]);
@@ -332,16 +334,28 @@ ${csvText}`,
         )}
 
         <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {["Barclays", "Amex"].map(src => (
-            <div key={src} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-              <span className="text-sm font-medium">{src}</span>
-              <span className="text-sm text-muted-foreground">
-                {lastImportByAccount[src]
-                  ? <>Last: <span className="font-semibold text-foreground">{formatDateUK(lastImportByAccount[src])}</span></>
-                  : "No imports yet"}
-              </span>
-            </div>
-          ))}
+          {["Barclays", "Amex"].map(src => {
+            const last = lastImportByAccount[src];
+            return (
+              <div key={src} className="rounded-lg bg-muted/30 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{src}</span>
+                  {last ? (
+                    <span className="text-sm text-muted-foreground">
+                      Last: <span className="font-semibold text-foreground">{formatDateUK(last.transaction_date)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No imports yet</span>
+                  )}
+                </div>
+                {last && (
+                  <p className="text-xs text-muted-foreground mt-1 truncate" title={last.description}>
+                    {last.description} — {formatCurrency(last.amount)}
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
         <p className="text-xs text-muted-foreground mt-2">Next import should only include transactions dated after the last transaction shown above to avoid duplicates.</p>
       </div>
