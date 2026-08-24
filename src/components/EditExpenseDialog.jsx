@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import CategorySelectItem from "@/components/CategorySelectItem";
 import ClientSplitInput from "@/components/ClientSplitInput";
 import MultiFileAttachment from "@/components/MultiFileAttachment";
-import { PAID_BY_CODES, getCategoriesForClient, isReimbursementRequired } from "@/lib/constants";
+import { PAID_BY_CODES, getCategoriesForClient, isReimbursementRequired, formatMonth } from "@/lib/constants";
 import { toast } from "sonner";
 
 const CURRENCIES = ["GBP", "USD", "EUR", "AED", "MYR", "THB", "SGD", "AUD", "JPY", "CHF", "CAD", "NZD"];
@@ -91,7 +91,15 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-sm">Date (Paid)</Label>
-              <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
+              <Input type="date" value={form.date} onChange={e => {
+                const newDate = e.target.value;
+                setForm(f => ({
+                  ...f,
+                  date: newDate,
+                  month: newDate ? formatMonth(newDate) : "",
+                  year: newDate ? new Date(newDate).getFullYear() : null,
+                }));
+              }} className="mt-1" />
             </div>
             <div>
               <Label className="text-sm">Invoice Date <span className="text-muted-foreground font-normal">(optional)</span></Label>
