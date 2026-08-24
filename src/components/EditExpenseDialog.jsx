@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import CategorySelectItem from "@/components/CategorySelectItem";
@@ -23,6 +24,7 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
     date: expense?.date || "",
     invoice_date: expense?.invoice_date || "",
     description: expense?.description || "",
+    comments: expense?.comments || "",
     paid_amount: expense?.paid_amount ?? 0,
     actual_cost: expense?.actual_cost ?? 0,
     category: expense?.category || "",
@@ -125,6 +127,17 @@ function EditExpenseDialogInner({ expense, open, onClose, queryKeys = [] }) {
           <div>
             <Label className="text-sm">Description</Label>
             <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-1" />
+          </div>
+
+          {/* Comments / Notes */}
+          <div>
+            <Label className="text-sm">Comments / Notes <span className="text-muted-foreground font-normal">(for accountant / reporting)</span></Label>
+            <Textarea
+              value={form.comments}
+              onChange={e => setForm(f => ({ ...f, comments: e.target.value }))}
+              placeholder="Explain how/why this was charged, client-specific notes, allocation rationale, etc."
+              className="mt-1 min-h-[90px]"
+            />
           </div>
 
           {/* Amounts */}

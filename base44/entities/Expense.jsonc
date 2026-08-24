@@ -51,6 +51,10 @@
       "type": "string",
       "title": "Description"
     },
+    "comments": {
+      "type": "string",
+      "title": "Comments / Notes"
+    },
     "category": {
       "type": "string",
       "title": "Category"
