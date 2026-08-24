@@ -42,12 +42,14 @@ export default function AccountantExport() {
   // Chronologically sorted, date-filtered expenses
   const filtered = useMemo(() => {
     let exps = [...allExpenses];
-    if (dateFrom && dateTo) {
-      const from = new Date(dateFrom);
-      const to = new Date(dateTo);
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo) : null;
+    if (from || to) {
       exps = exps.filter(e => {
         const d = new Date(e.date);
-        return d >= from && d <= to;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
       });
     }
     return exps.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -56,12 +58,14 @@ export default function AccountantExport() {
   // Chronologically sorted, date-filtered mileage
   const filteredMileage = useMemo(() => {
     let miles = [...allMileage];
-    if (dateFrom && dateTo) {
-      const from = new Date(dateFrom);
-      const to = new Date(dateTo);
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo) : null;
+    if (from || to) {
       miles = miles.filter(m => {
         const d = new Date(m.date);
-        return d >= from && d <= to;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
       });
     }
     return miles.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -70,12 +74,14 @@ export default function AccountantExport() {
   // Chronologically sorted, date-filtered card payments
   const filteredPayments = useMemo(() => {
     let pays = [...allPayments];
-    if (dateFrom && dateTo) {
-      const from = new Date(dateFrom);
-      const to = new Date(dateTo);
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo) : null;
+    if (from || to) {
       pays = pays.filter(t => {
         const d = new Date(t.transaction_date);
-        return d >= from && d <= to;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
       });
     }
     return pays.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
