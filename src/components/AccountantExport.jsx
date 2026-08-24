@@ -491,9 +491,9 @@ export default function AccountantExport() {
   return (
     <div className="space-y-4">
       <MonthEndReadiness expenses={filtered} />
-      <div className="bg-card rounded-xl border border-border p-5">
-        <h3 className="font-semibold mb-4">Export for Accountant</h3>
-        <div className="flex flex-wrap items-end gap-3 mb-4">
+      <div className="sticky top-0 z-30 bg-card rounded-xl border border-border p-4 shadow-lg backdrop-blur-sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <h3 className="font-semibold mr-auto self-center">Export for Accountant</h3>
           <div>
             <Label className="text-sm">From</Label>
             <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setShowPreview(false); }} className="mt-1 w-40" />
@@ -502,7 +502,7 @@ export default function AccountantExport() {
             <Label className="text-sm">To</Label>
             <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setShowPreview(false); }} className="mt-1 w-40" />
           </div>
-          <span className="text-sm text-muted-foreground">{filtered.length} expenses · {filteredMileage.length} journeys · {filteredPayments.length} payments</span>
+          <span className="text-sm text-muted-foreground self-center">{filtered.length} expenses · {filteredMileage.length} journeys · {filteredPayments.length} payments</span>
           <Button onClick={() => setShowPreview(true)} disabled={filtered.length === 0 && filteredMileage.length === 0} className="gap-1.5">
             <Eye className="h-4 w-4" /> Preview
           </Button>
