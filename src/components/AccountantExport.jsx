@@ -2,11 +2,10 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Loader2, FileSpreadsheet, FileText, Eye } from "lucide-react";
 import { formatCurrency, formatDateUK, formatMonth, getClientName, getPaidByLabel, COMPANY_INFO, PAID_BY_CODES, CLIENT_CODES } from "@/lib/constants";
 import MonthEndReadiness from "./MonthEndReadiness";
+import DatePopoverPicker from "./DatePopoverPicker";
 
 function getMileagePaidByLabel(journey) {
   // Mileage uses staff_member email — map to name
@@ -494,14 +493,8 @@ export default function AccountantExport() {
       <div className="sticky top-0 z-30 bg-card rounded-xl border border-border p-4 shadow-lg backdrop-blur-sm">
         <div className="flex flex-wrap items-end gap-3">
           <h3 className="font-semibold mr-auto self-center">Export for Accountant</h3>
-          <div>
-            <Label className="text-sm">From</Label>
-            <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setShowPreview(false); }} className="mt-1 w-40" />
-          </div>
-          <div>
-            <Label className="text-sm">To</Label>
-            <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setShowPreview(false); }} className="mt-1 w-40" />
-          </div>
+          <DatePopoverPicker label="From" value={dateFrom} onChange={v => { setDateFrom(v); setShowPreview(false); }} />
+          <DatePopoverPicker label="To" value={dateTo} onChange={v => { setDateTo(v); setShowPreview(false); }} />
           <span className="text-sm text-muted-foreground self-center">{filtered.length} expenses · {filteredMileage.length} journeys · {filteredPayments.length} payments</span>
           <Button onClick={() => setShowPreview(true)} disabled={filtered.length === 0 && filteredMileage.length === 0} className="gap-1.5">
             <Eye className="h-4 w-4" /> Preview
