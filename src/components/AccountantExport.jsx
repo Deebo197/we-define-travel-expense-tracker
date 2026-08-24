@@ -42,8 +42,8 @@ export default function AccountantExport() {
   // Chronologically sorted, date-filtered expenses
   const filtered = useMemo(() => {
     let exps = [...allExpenses];
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
+    const from = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+    const to = dateTo ? new Date(dateTo + "T23:59:59") : null;
     if (from || to) {
       exps = exps.filter(e => {
         const d = new Date(e.date);
@@ -58,8 +58,8 @@ export default function AccountantExport() {
   // Chronologically sorted, date-filtered mileage
   const filteredMileage = useMemo(() => {
     let miles = [...allMileage];
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
+    const from = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+    const to = dateTo ? new Date(dateTo + "T23:59:59") : null;
     if (from || to) {
       miles = miles.filter(m => {
         const d = new Date(m.date);
@@ -74,8 +74,8 @@ export default function AccountantExport() {
   // Chronologically sorted, date-filtered card payments
   const filteredPayments = useMemo(() => {
     let pays = [...allPayments];
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
+    const from = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+    const to = dateTo ? new Date(dateTo + "T23:59:59") : null;
     if (from || to) {
       pays = pays.filter(t => {
         const d = new Date(t.transaction_date);
@@ -113,7 +113,13 @@ export default function AccountantExport() {
   const totalMileageCost = filteredMileage.reduce((s, m) => s + (m.total_cost || 0), 0);
   const totalMiles = filteredMileage.reduce((s, m) => s + (m.total_miles || 0), 0);
   const totalPayments = filteredPayments.reduce((s, t) => s + (t.amount || 0), 0);
-  const dateRange = dateFrom && dateTo ? `${formatDateUK(dateFrom)} — ${formatDateUK(dateTo)}` : "All dates";
+  const dateRange = dateFrom && dateTo
+    ? `${formatDateUK(dateFrom)} — ${formatDateUK(dateTo)}`
+    : dateFrom
+      ? `From ${formatDateUK(dateFrom)} onwards`
+      : dateTo
+        ? `Up to ${formatDateUK(dateTo)}`
+        : "All dates";
 
   const journeyDescription = (m) => {
     const stops = (m.stops || []).map(s => s.postcode || s.label).filter(Boolean);
