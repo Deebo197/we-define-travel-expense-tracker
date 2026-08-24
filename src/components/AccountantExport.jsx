@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, FileSpreadsheet, FileText, Eye } from "lucide-react";
-import { formatCurrency, formatDateUK, formatMonth, getClientName, getPaidByLabel, COMPANY_INFO, PAID_BY_CODES } from "@/lib/constants";
+import { formatCurrency, formatDateUK, formatMonth, getClientName, getPaidByLabel, COMPANY_INFO, PAID_BY_CODES, CLIENT_CODES } from "@/lib/constants";
 import MonthEndReadiness from "./MonthEndReadiness";
 
 function getMileagePaidByLabel(journey) {
@@ -238,6 +238,25 @@ export default function AccountantExport() {
       const introLines = pdf.splitTextToSize(intro, usableW);
       pdf.text(introLines, margin, y);
       y += introLines.length * 5 + 6;
+
+      // ── Client code legend ──────────────────────────────────────────────
+      pdf.setFontSize(9).setFont(undefined, "bold").setTextColor(100);
+      pdf.text("CLIENT SPLIT CODES", margin, y);
+      y += 5;
+      const legendPerRow = 3;
+      const legendColW = usableW / legendPerRow;
+      CLIENT_CODES.forEach((c, i) => {
+        const col = i % legendPerRow;
+        const row = Math.floor(i / legendPerRow);
+        const lx = margin + col * legendColW;
+        const ly = y + row * 5;
+        if (i % legendPerRow === 0) checkPage(6);
+        pdf.setFontSize(7.5).setFont(undefined, "bold").setTextColor(40);
+        pdf.text(c.code, lx, ly);
+        pdf.setFont(undefined, "normal").setTextColor(100);
+        pdf.text(c.name, lx + 10, ly);
+      });
+      y += Math.ceil(CLIENT_CODES.length / legendPerRow) * 5 + 8;
 
       // ── SECTION 1: EXPENSES ──────────────────────────────────────────────
       pdf.setFontSize(11).setFont(undefined, "bold").setTextColor(200, 16, 46);
@@ -534,6 +553,19 @@ export default function AccountantExport() {
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
               Full itemised expense and mileage report for {COMPANY_INFO.name} for the period {dateRange}. Listed in chronological order, grouped by month.
             </p>
+
+            {/* ── Client code legend ── */}
+            <div className="mb-6">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Client Split Codes</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-1 text-xs border border-gray-200 rounded p-3 bg-gray-50">
+                {CLIENT_CODES.map(c => (
+                  <div key={c.code} className="flex items-baseline gap-2">
+                    <span className="font-mono font-bold text-[#2D2D2D] w-8">{c.code}</span>
+                    <span className="text-gray-600">{c.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* ── SECTION 1: EXPENSES ── */}
             <h3 className="text-base font-bold text-[#C8102E] mb-3">Section 1 — Expenses</h3>
