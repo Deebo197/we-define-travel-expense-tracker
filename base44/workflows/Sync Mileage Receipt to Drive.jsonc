@@ -1,0 +1,38 @@
+{
+  "name": "Sync Mileage Receipt to Drive",
+  "description": "",
+  "trigger": {
+    "condition": "${ ((.trigger.data.receipt_file != null and .trigger.data.receipt_file != \"\" and .trigger.data.receipt_file != [] and .trigger.data.receipt_file != {}) and (.trigger.data.receipt_url | index(\"drive.google.com\") == null)) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update"
+      ],
+      "entity_name": "MileageJourney"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "sync_mileage_receipt_to_drive",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncReceiptToDrive",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "syncReceiptToDrive"
+  }
+}
