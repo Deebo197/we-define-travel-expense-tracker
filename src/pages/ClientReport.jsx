@@ -48,7 +48,7 @@ export default function ClientReport() {
 
     const clientMileage = allMileage
       .filter(m => {
-        const d = new Date(m.date);
+        const d = new Date(m.billing_date || m.date);
         return d >= from && d <= to && m.client_allocations?.some(a => a.client_code === clientCode);
       })
       .map(m => {
@@ -59,7 +59,7 @@ export default function ClientReport() {
           description: `Mileage: ${m.purpose} (${m.stops?.map(s => s.postcode).join(" > ")})`,
           paid_amount: m.total_cost,
           type: "mileage",
-          effectiveDate: m.date,
+          effectiveDate: m.billing_date || m.date,
         };
       });
 
@@ -376,6 +376,9 @@ export default function ClientReport() {
                       {formatDateUK(item.effectiveDate || item.date)}
                       {item.invoice_date && item.invoice_date !== item.date && (
                         <span className="block text-xs text-gray-400" title="Original paid date">paid {formatDateUK(item.date)}</span>
+                      )}
+                      {item.type === "mileage" && item.billing_date && item.billing_date !== item.date && (
+                        <span className="block text-xs text-gray-400" title="Date travelled">travelled {formatDateUK(item.date)}</span>
                       )}
                     </span>
                     <span className="pr-2">
