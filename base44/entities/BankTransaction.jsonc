@@ -1,31 +1,41 @@
 {
   "name": "BankTransaction",
-  "type": "object",
   "properties": {
     "account_source": {
-      "type": "string",
-      "title": "Account Source",
       "enum": [
         "Barclays",
         "Amex"
-      ]
-    },
-    "transaction_date": {
-      "type": "string",
-      "format": "date",
-      "title": "Transaction Date"
-    },
-    "description": {
-      "type": "string",
-      "title": "Description"
+      ],
+      "title": "Account Source",
+      "type": "string"
     },
     "amount": {
-      "type": "number",
-      "title": "Amount"
+      "title": "Amount",
+      "type": "number"
+    },
+    "auto_processed": {
+      "default": false,
+      "title": "Auto Processed",
+      "type": "boolean"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "linked_expense_id": {
+      "title": "Linked Expense ID",
+      "type": "string"
+    },
+    "receipt_name": {
+      "title": "Attached Receipt Filename",
+      "type": "string"
+    },
+    "receipt_url": {
+      "title": "Attached Receipt URL",
+      "type": "string"
     },
     "status": {
-      "type": "string",
-      "title": "Status",
+      "default": "pending",
       "enum": [
         "pending",
         "allocated",
@@ -33,16 +43,13 @@
         "ignored",
         "payment"
       ],
-      "default": "pending"
+      "title": "Status",
+      "type": "string"
     },
-    "auto_processed": {
-      "type": "boolean",
-      "title": "Auto Processed",
-      "default": false
-    },
-    "linked_expense_id": {
-      "type": "string",
-      "title": "Linked Expense ID"
+    "transaction_date": {
+      "format": "date",
+      "title": "Transaction Date",
+      "type": "string"
     }
   },
   "required": [
@@ -50,5 +57,6 @@
     "transaction_date",
     "description",
     "amount"
-  ]
+  ],
+  "type": "object"
 }
