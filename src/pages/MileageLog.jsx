@@ -50,6 +50,7 @@ export default function MileageLog() {
   function getDefaultForm() {
     return {
       date: new Date().toISOString().split("T")[0],
+      billing_date: "",
       vehicle_type: "Car",
       purpose: "",
       paid_by: "",
@@ -160,6 +161,7 @@ export default function MileageLog() {
 
       const journey = await base44.entities.MileageJourney.create({
         date: form.date,
+        billing_date: form.billing_date || form.date,
         vehicle_type: form.vehicle_type,
         rate_per_mile: getMileageRate(form.vehicle_type, form.date),
         purpose: form.purpose,
@@ -233,6 +235,7 @@ export default function MileageLog() {
     setEditJourney(j);
     setEditForm({
       date: j.date,
+      billing_date: j.billing_date || "",
       vehicle_type: j.vehicle_type || "Car",
       rate_per_mile: j.rate_per_mile ?? getMileageRate(j.vehicle_type || "Car", j.date),
       purpose: j.purpose,
@@ -330,7 +333,12 @@ export default function MileageLog() {
                 <td className="p-3">
                   <Checkbox checked={selectedIds.includes(j.id)} onCheckedChange={() => toggleSelectId(j.id)} />
                 </td>
-                <td className="p-3 whitespace-nowrap">{formatDateUK(j.date)}</td>
+                <td className="p-3 whitespace-nowrap">
+                  {formatDateUK(j.date)}
+                  {j.billing_date && j.billing_date !== j.date && (
+                    <div className="text-xs text-muted-foreground">billed {formatDateUK(j.billing_date)}</div>
+                  )}
+                </td>
                 {isAdmin && (
                   <td className="p-3">
                     <div className="flex items-center gap-2">
@@ -380,10 +388,14 @@ export default function MileageLog() {
           </DialogHeader>
           {editJourney && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className="text-sm font-medium">Date</Label>
                   <Input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Billing Date</Label>
+                  <Input type="date" value={editForm.billing_date || ""} onChange={e => setEditForm(f => ({ ...f, billing_date: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Vehicle</Label>
@@ -540,10 +552,15 @@ export default function MileageLog() {
             <DialogTitle>New Mileage Journey</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label className="text-sm font-medium">Date</Label>
                 <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Billing Date</Label>
+                <Input type="date" value={form.billing_date || ""} onChange={e => setForm(f => ({ ...f, billing_date: e.target.value }))} className="mt-1" />
+                <p className="text-xs text-muted-foreground mt-1">Defaults to journey date if left blank</p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Vehicle</Label>

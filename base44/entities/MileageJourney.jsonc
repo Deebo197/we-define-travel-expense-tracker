@@ -7,6 +7,11 @@
       "format": "date",
       "title": "Date"
     },
+    "billing_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Billing Date"
+    },
     "staff_member": {
       "type": "string",
       "title": "Staff Member Email"
