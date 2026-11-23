@@ -15,8 +15,12 @@ export default function ClientSplitInput({ allocations, onChange, paidAmount }) 
     setSplitMode(checked);
     if (!checked && allocations.length > 0) {
       onChange([{ ...allocations[0], percentage: 100, amount: paidAmount || 0 }]);
-    } else if (checked && allocations.length === 1) {
-      onChange([{ ...allocations[0] }]);
+    } else if (checked && allocations.length <= 1) {
+      const first = allocations[0] || { client_code: "", client_name: "", percentage: 0, amount: 0 };
+      const updated = [{ ...first }, { client_code: "", client_name: "", percentage: 0, amount: 0 }];
+      const dist = distributeEqually(2, paidAmount || 0);
+      updated.forEach((a, i) => { a.percentage = dist[i].percentage; a.amount = dist[i].amount; });
+      onChange(updated);
     }
   };
 
